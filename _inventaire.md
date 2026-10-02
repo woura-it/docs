@@ -166,3 +166,17 @@
 - App Shopify : textes anglais, erreur API brute (« Veuillez vérifier les logs »), lien « Accéder au Dashboard Woura → » vers le site et non le tableau de bord.
 - Application : clés i18n manquantes (`Orders.detail.downloadError`, `DeliveryMen.errors.loadSections`, `Account.affiliation.wourapayPortalError`…), validations anglaises sur `/contact`, « Essai Gratuit » mène à la connexion, « WordPress » au lieu de WooCommerce dans « Prévenir vos clients », textes d'onboarding inversés, tutoiement / vouvoiement mélangés, source « YOUCAN » / « WOURA » brute dans la fenêtre de synchro.
 - API : 6 contradictions entre `docs_content` et le code (affiliation par défaut, plafond retiré, notifieur, garde des campagnes, décompte des drapeaux, fuseau des messages du matin).
+
+## Écarts relevés pendant la rédaction (lots 1 et 2)
+
+- **Assistant WhatsApp — réglages ignorés** : horaires et message d'absence, photos, vocaux, mots et message d'escalade, protection anti-abus sont envoyés par l'écran mais absents des serializers de l'API (`whatsapp_shop/serializers.py`) : DRF les jette sans erreur, tout revient au défaut au rechargement. Non documentés ; tâche de correction proposée.
+- **Connexion Meta = assistant en ligne immédiatement** (`whatsapp_shop/api.py` création et rattachement : `is_live=True`), alors que l'étape « Tester » dit « avant de le mettre en production ». La doc avertit.
+- **Alertes marchand hors fenêtre 24 h : non envoyées** (`notification/whatsapp_service.py`, seuls les messages d'ouverture partent en modèle). La consigne disait « hors fenêtre, modèle payant ». L'aide du champ `wa_window_opened_at` dit « gratuit » en fenêtre, mais le code facture tout sauf « Nouvelle commande ».
+- **Bandeau « WhatsApp Pro » (page Commandes)** : son texte parle des messages de suivi des clients, mais il reflète la fenêtre du marchand.
+- **Synchronisation manuelle** : refusée pour une boutique de type WOURA (native ou convertie : « n'est pas disponible pour les boutiques de type 'WOURA' »), mais **Actualiser** reste affiché ; la fenêtre affiche la source brute « WOURA » / « YOUCAN » et la note « déduites de votre quota d'abonnement » même en mode crédits.
+- **Campagnes** : les cartes de modèles affichent le texte anglais même langue FR choisie ; les champs du contenu portent les noms techniques (`nom_client`, `date_fin`) ; tous les modèles marketing exigent une image (téléversement obligatoire).
+- **Prix des plans** : la base de dev affiche Pro 10 000 F / Business 20 000 F (1 mois), la migration de départ 20 000 / 40 000. La doc ne fige aucun prix ; à vérifier sur la page Tarifs de prod.
+- **Textes** : écran vide de « Ma boutique en ligne » promet « 1 000 F de crédits » (bonus désactivé, `WALLET_WELCOME_BONUS=0`) ; titre de fenêtre « Ajouter la boutique » vs bouton « Ajouter une boutique » ; accueil : « Woocommerce », exemple de ville « Abidjan » pour un compte au Bénin, textes des étapes 1/2 inversés dans le code ; « Prévenir vos clients » cite « WordPress » ; vitrine en « XOF », application en « FCFA ».
+- **Shopify** : aide « code affiché dans votre admin Shopify » alors que l'app s'ouvre hors de l'admin (`embedded = false`) ; bouton « Voir le tutoriel vidéo » jamais affiché (URL non configurée).
+- **Vitrine de dev :3002** : rechargements en boucle (Turbopack « stale », socket HMR fermé) → quotas DRF par IP épuisés ; captures faites sur une copie webpack :3012.
+- **Mintlify** : CLI refusée sous Node 25 ; Node 22 téléchargé dans le scratchpad (avec accord).
