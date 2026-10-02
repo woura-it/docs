@@ -1,12 +1,12 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "almond",
-  "name": "Product Guide",
-  "description": "Step-by-step guides for every product—platform setup, analytics, and integrations in one place.",
+  "name": "Woura — Guide marchand",
+  "description": "Le guide complet du marchand Woura : créer votre boutique, recevoir et livrer vos commandes, encaisser, suivre vos chiffres et gérer votre abonnement.",
   "colors": {
-    "primary": "#166E3F",
-    "light": "#26BD6C",
-    "dark": "#166E3F"
+    "primary": "#D4941C",
+    "light": "#F5B731",
+    "dark": "#D4941C"
   },
   "favicon": "/favicon.ico",
   "icons": {
@@ -16,82 +16,68 @@
     "eyebrows": "breadcrumbs"
   },
   "contextual": {
-    "options": ["copy", "view", "assistant", "mcp", "add-mcp"]
-  },
-  "navigation": {
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Home",
-          "icon": "house",
-          "href": "/"
-        },
-        {
-          "anchor": "Changelog",
-          "icon": "scroll-text",
-          "href": "https://www.mintlify.com/docs/changelog"
-        },
-        {
-          "anchor": "Help",
-          "icon": "life-buoy",
-          "href": "https://www.mintlify.com/docs/contact-support"
-        }
-      ]
-    },
-    "directory": "card",
-    "groups": [
-      {
-        "group": "Platform",
-        "icon": "layers",
-        "expanded": true,
-        "pages": [
-          "platform/quickstart",
-          "platform/key-concepts",
-          "platform/configuration/settings",
-          "platform/configuration/user-management",
-          "platform/administration/roles-permissions"
-        ]
-      },
-      {
-        "group": "Analytics",
-        "icon": "chart-bar",
-        "expanded": true,
-        "pages": [
-          "analytics/quickstart",
-          "analytics/connect-data",
-          "analytics/dashboards/create-dashboard",
-          "analytics/reports/scheduled-reports"
-        ]
-      },
-      {
-        "group": "Integrations",
-        "icon": "plug",
-        "expanded": true,
-        "pages": [
-          "integrations/quickstart",
-          "integrations/authentication",
-          "integrations/connectors/crm",
-          "integrations/webhooks/configure"
-        ]
-      }
-    ]
+    "options": ["copy", "view"]
   },
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "https://woura.africa"
   },
   "navbar": {
-    "links": [],
+    "links": [
+      {
+        "label": "Support",
+        "href": "https://woura.africa/fr/contact"
+      }
+    ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Ouvrir Woura",
+      "href": "https://woura.africa/fr/auth/login"
     }
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/yourcompany",
-      "linkedin": "https://linkedin.com/company/yourcompany"
-    }
+  "navigation": {
+    "languages": [
+      {
+        "language": "fr",
+        "global": {
+          "anchors": [
+            {
+              "anchor": "woura.africa",
+              "icon": "globe",
+              "href": "https://woura.africa"
+            },
+            {
+              "anchor": "Tarifs",
+              "icon": "badge-percent",
+              "href": "https://woura.africa/fr/pricing"
+            },
+            {
+              "anchor": "Support",
+              "icon": "life-buoy",
+              "href": "https://woura.africa/fr/contact"
+            }
+          ]
+        },
+        "tabs": [
+          {
+            "tab": "Démarrer",
+            "icon": "rocket",
+            "groups": [
+              {
+                "group": "Démarrer",
+                "pages": [
+                  "index",
+                  "demarrer/creer-votre-compte",
+                  "demarrer/premiere-journee",
+                  "demarrer/credits-et-abonnement",
+                  "demarrer/glossaire"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 }
