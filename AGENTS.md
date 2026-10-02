@@ -3,6 +3,7 @@
 Documentation utilisateur de Woura, publiée avec [Mintlify](https://mintlify.com).
 Pages en MDX avec frontmatter YAML ; configuration dans `docs.json` ;
 prévisualisation `npx mint dev` ; liens `npx mint broken-links`.
+La CLI Mintlify refuse Node 25 : utiliser une Node LTS (20 ou 22).
 
 ## Le lecteur
 

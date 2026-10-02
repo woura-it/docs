@@ -192,3 +192,15 @@
 - **Offres / Upsell** : « FCFA » codé en dur dans l'éditeur ; documenté en Note.
 - **Champ « Code promo » du formulaire** : le lien « Vous avez un code promo ? » s'affiche toujours dans la vitrine, indépendamment de ce champ.
 - **Domaine de démo** : les captures montrent l'adresse fictive `maison-awa.woura.shop` (sous-domaine inexistant du domaine de prod) — à valider.
+
+## Écarts relevés (lots 4 à 6 — application, abonnement, aide)
+
+- **Fiches produits IA** : la fenêtre annonce que l'IA rédige « arguments, avis, FAQ » → de faux avis clients peuvent être publiés sur une fiche. La doc demande de les retirer avant publication (déjà « à trancher » côté produit).
+- **SAV** : les cartes affichent « Livré le - » sans date pour des commandes livrées.
+- **Assigner un livreur** : « Frais de livraison » pré-rempli à 1 500 alors que les frais par défaut de la boutique de démo valent 1 000.
+- **Chiffres** : la flèche du Profit est rouge (« ↘ 138 % ») alors que le profit augmente ; l'agenda « Programmées » n'affiche pas la commande programmée de démo.
+- **Audience** : taux de conversion > 100 % quand des commandes précèdent la mesure des visites (expliqué en Note).
+- **Compte** : l'onglet « Prix d'import » reste visible (fonction « Idées produits » masquée) ; la complétion du profil compte « le numéro de l'assistant » (Wou).
+- **Factures** : aucune facture d'abonnement ou de recharge téléchargeable (documenté en Note).
+- **Affiliation** : le parrainage passe par un lien `?ref=` et un cookie : un filleul qui s'inscrit sur un autre appareil n'est pas rattaché.
+- **Onglets du compte selon le mode de facturation global** : en dev (`pay_as_you_go`) on voit « Crédits et consommation », « Historique », « Tarifs des services » ; à vérifier en production.
