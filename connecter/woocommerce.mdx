@@ -1,0 +1,105 @@
+---
+title: "Connecter une boutique WooCommerce"
+description: "Reliez votre site WordPress WooCommerce à Woura avec deux clés REST API."
+icon: "plug"
+---
+
+Relier WooCommerce à Woura fait arriver vos commandes et vos produits WooCommerce dans Woura. Vous créez deux clés dans WordPress, vous les collez dans Woura, et c'est fait.
+
+<Info>
+  Il vous faut un accès administrateur à votre WordPress.
+</Info>
+
+## Avant de commencer
+
+WooCommerce ne laisse un autre service lire votre boutique que si :
+- votre site est en **HTTPS** : son adresse commence par `https://` ;
+- les **permaliens** de WordPress sont activés, avec une autre option que « Simple » (menu **Réglages → Permaliens**) ;
+- votre hébergeur ne bloque pas l'API REST de WordPress.
+
+En cas de doute, demandez à la personne qui gère votre site.
+
+<Warning>
+  Les deux clés donnent accès à vos commandes et à vos clients. Ne les envoyez à personne, ni par WhatsApp ni par e-mail. Collez-les seulement dans Woura.
+</Warning>
+
+## Étapes
+
+<Steps>
+  <Step title="Créez une clé dans WooCommerce">
+    Dans votre administration WordPress, ouvrez **WooCommerce → Réglages**, onglet **Avancé**, puis **REST API**. Cliquez sur **Ajouter une clé**.
+
+    - **Description** : écrivez par exemple « Woura ».
+    - **Utilisateur** : choisissez un compte administrateur.
+    - **Droits d'accès** : choisissez **Lecture/Écriture**.
+
+    Cliquez sur **Générer une clé API**.
+  </Step>
+  <Step title="Copiez les deux clés">
+    WooCommerce affiche deux codes, **une seule fois** :
+    - la **Clé client** (Consumer Key), qui commence par `ck_` ;
+    - le **Secret client** (Consumer Secret), qui commence par `cs_`.
+
+    Copiez-les tout de suite. Si vous fermez la page sans les copier, il faudra créer une nouvelle clé.
+
+    Besoin d'aide pour cet écran ? Consultez la [documentation WooCommerce sur l'API REST](https://woocommerce.com/document/woocommerce-rest-api/).
+  </Step>
+  <Step title="Ouvrez la fenêtre WooCommerce dans Woura">
+    Menu **Ma boutique en ligne**, bouton **Ajouter une boutique**. Choisissez **Oui, j'ai déjà une boutique**, puis **Boutique WooCommerce**.
+
+    <Frame caption="La fenêtre « Connecter WooCommerce ».">
+      <img src="/images/connecter/woocommerce/01-formulaire.png" alt="Fenêtre Connecter WooCommerce avec le rappel des étapes, le nom de la boutique, l'URL de la boutique et les champs Consumer Key et Consumer Secret." />
+    </Frame>
+  </Step>
+  <Step title="Remplissez le formulaire">
+    - **Nom de la boutique** et, si vous voulez, un logo ;
+    - **URL de la boutique** : l'adresse complète de votre site, avec `https://`, par exemple `https://votre-boutique.com` ;
+    - **Consumer Key** et **Consumer Secret** : les deux clés copiées ;
+    - **Pays** et **Devise principale**.
+  </Step>
+  <Step title="Connectez">
+    Cliquez sur **Connecter la boutique**. Woura vérifie les clés auprès de votre site. Si tout va bien, le message « Boutique WooCommerce connectée avec succès ! » s'affiche, et la boutique devient votre **boutique active**.
+  </Step>
+</Steps>
+
+## Ce qui se synchronise
+
+| Quoi | Quand |
+|---|---|
+| Vos **produits** | À la connexion. Ensuite, en temps réel quand vous en créez, modifiez ou supprimez dans WooCommerce. |
+| Vos **nouvelles commandes** et leurs changements | En temps réel. |
+| Vos **commandes passées avant la connexion** | **Pas importées automatiquement.** Lancez **Actualiser** sur la page **Commandes**. |
+
+<Tip>
+  Juste après la connexion, ouvrez **Commandes**, cliquez sur **Actualiser**, mettez par exemple 30 dans **Profondeur (jours)**, puis cliquez sur **Lancer la synchronisation**. Vos commandes du dernier mois arrivent dans Woura.
+</Tip>
+
+Détails : [Ce qui se synchronise](/connecter/synchronisation).
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="« Impossible de se connecter à WooCommerce… »">
+    Woura n'a pas pu lire votre boutique avec ces clés. Vérifiez, dans l'ordre :
+    1. l'**URL de la boutique** : adresse complète, avec `https://`, sans faute ;
+    2. les deux clés : collées en entier, sans espace, et dans le bon champ ;
+    3. les **Droits d'accès** de la clé : **Lecture/Écriture** ;
+    4. les permaliens WordPress : autre chose que « Simple ».
+
+    Si le message persiste, votre hébergeur bloque peut-être l'API REST. Montrez ce message à la personne qui gère votre site.
+  </Accordion>
+  <Accordion title="Mes anciennes commandes n'apparaissent pas.">
+    C'est normal : les commandes passées avant la connexion ne sont pas importées toutes seules. Utilisez **Actualiser** sur la page **Commandes** (voir l'astuce plus haut).
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Ce qui se synchronise" icon="refresh-cw" href="/connecter/synchronisation">
+    Relancer une synchronisation.
+  </Card>
+  <Card title="Commandes" icon="shopping-cart" href="/application/commandes">
+    Traiter vos commandes dans Woura.
+  </Card>
+</CardGroup>

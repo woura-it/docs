@@ -1,0 +1,113 @@
+---
+title: "Notifications WhatsApp"
+description: "Recevez vos alertes sur WhatsApp, et prévenez vos clients quand leur commande avance."
+icon: "bell-ring"
+---
+
+WhatsApp sert à deux choses dans Woura : vous **alerter**, vous, quand il se passe quelque chose dans votre boutique, et **prévenir vos clients** de l'avancée de leur commande. Les deux se règlent dans **Paramètres**, onglet **Notifications**.
+
+## Vos alertes sur WhatsApp
+
+<Steps>
+  <Step title="Ouvrez les réglages">
+    Menu **Paramètres**, onglet **Notifications**, carte **WhatsApp Business**.
+  </Step>
+  <Step title="Indiquez votre numéro">
+    Dans **Numéro WhatsApp**, saisissez le numéro sur lequel vous voulez recevoir les alertes.
+  </Step>
+  <Step title="Activez et choisissez vos alertes">
+    Activez **Activer les notifications WhatsApp**. Sous **Choisissez vos alertes WhatsApp**, cochez celles qui vous intéressent :
+
+    | Alerte | Quand |
+    |---|---|
+    | **Nouvelle commande** | À chaque nouvelle commande. Désactivée au départ. |
+    | **Changement de statut** | Quand une commande change de statut (livrée, annulée…). |
+    | **Commande en livraison** | Quand une commande est assignée à un livreur. |
+    | **Rappels commandes programmées** | Avant la date de livraison prévue. |
+    | **Alertes stock** | En cas de rupture ou de stock bas. |
+    | **Cashback** | Quand un cashback est crédité sur votre compte. |
+    | **Solde bas** | Quand votre portefeuille ne suffit plus. |
+    | **Abonnement** | Avant l'expiration de votre abonnement. |
+
+    Cliquez sur **Enregistrer**, en haut de la page.
+
+    <Frame caption="La carte « WhatsApp Business » et le choix des alertes.">
+      <img src="/images/connecter/notifications-whatsapp/02-whatsapp-business.png" alt="Carte WhatsApp Business : numéro WhatsApp, interrupteur Activer les notifications WhatsApp et liste des alertes." />
+    </Frame>
+  </Step>
+</Steps>
+
+<Warning>
+  Vos alertes ne vous parviennent que si la **fenêtre de 24 heures** est ouverte : vous devez avoir écrit au numéro WhatsApp de Woura dans les dernières 24 heures. Sinon, elles ne partent pas. Voir [La fenêtre de 24 heures](/connecter/fenetre-24-heures).
+</Warning>
+
+L'alerte **Nouvelle commande** est gratuite. Les autres alertes WhatsApp coûtent des crédits.
+
+<Tip>
+  Juste en dessous, **Préférences de notification** règle les alertes que vous recevez dans l'application (la cloche en haut de l'écran) : **Nouvelle commande**, **Commande livrée**, **Alerte stock bas**, **Abonnement**, **Service client (SAV)**, **Agenda**. Elles sont gratuites.
+</Tip>
+
+## Prévenir vos clients
+
+Un client rassuré rappelle moins et refuse moins à la livraison. Woura peut lui écrire automatiquement quand sa commande avance.
+
+<Steps>
+  <Step title="Activez le suivi de commande">
+    Dans **Paramètres** → **Notifications**, carte **Prévenir vos clients**, activez **Suivi de commande**. Le suivi est désactivé au départ.
+  </Step>
+  <Step title="Personnalisez les messages (facultatif)">
+    Trois messages se personnalisent : **commande acceptée**, **en livraison**, **livrée**. Vous pouvez y glisser `{customer_name}` (le nom du client) et `{order_number}` (le numéro de commande). Laissés vides, les messages par défaut s'appliquent.
+
+    <Frame caption="La carte « Prévenir vos clients ».">
+      <img src="/images/connecter/notifications-whatsapp/01-prevenir-vos-clients.png" alt="Carte Prévenir vos clients avec l'interrupteur Suivi de commande, l'explication des canaux et les champs de message commande acceptée et en livraison." />
+    </Frame>
+  </Step>
+  <Step title="Enregistrez">
+    Cliquez sur **Enregistrer**.
+  </Step>
+</Steps>
+
+Votre client est prévenu quand sa commande est acceptée, part en livraison, est livrée, et aussi si elle est annulée ou programmée. Le suivi marche pour toutes vos commandes : boutique Woura, Shopify, WooCommerce, YouCan ou WhatsApp.
+
+### Par où part le message
+
+1. **Par WhatsApp, depuis votre numéro**, si vous avez relié WhatsApp.
+2. Sinon, **par WhatsApp depuis le numéro de Woura**, à votre nom.
+3. Si WhatsApp n'est pas possible, **par e-mail**, si le client a laissé son adresse. L'e-mail est gratuit.
+
+Chaque message WhatsApp de suivi coûte 1 crédit.
+
+## La confirmation de commande de votre boutique en ligne
+
+Votre boutique Woura peut aussi envoyer au client une confirmation WhatsApp juste après sa commande. Ce réglage se trouve dans l'éditeur de boutique : **COD & Livraison**, onglet **Messages**, **Notification WhatsApp client**. Voir [Commande et livraison](/boutique/commande-et-livraison).
+
+- Son coût par envoi est affiché sous l'interrupteur.
+- Elle ne part que si le modèle de message est validé par Meta. Woura l'indique : « Modèle de confirmation validé », ou « Modèle en attente de validation Meta ».
+
+Au même endroit, **Alerte WhatsApp marchand** est le même réglage que l'alerte **Nouvelle commande** des **Paramètres** : l'activer d'un côté l'active de l'autre.
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="J'ai activé les alertes, mais je ne reçois rien.">
+    Vérifiez dans l'ordre :
+    1. le **Numéro WhatsApp** saisi, avec l'indicatif du pays ;
+    2. **Activer les notifications WhatsApp** est bien allumé, et l'alerte voulue est cochée ;
+    3. la fenêtre de 24 heures est ouverte : répondez au message que Woura vous envoie chaque matin, ou écrivez au numéro de Woura ;
+    4. il vous reste des crédits.
+  </Accordion>
+  <Accordion title="Mes clients ne reçoivent pas les messages de suivi.">
+    Vérifiez que **Suivi de commande** est activé et enregistré, et que le client a donné un numéro WhatsApp valide à la commande. Il vous faut aussi des crédits. Sans WhatsApp, le message part par e-mail seulement si le client a laissé son adresse.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="La fenêtre de 24 heures" icon="clock" href="/connecter/fenetre-24-heures">
+    Pourquoi certaines alertes n'arrivent pas.
+  </Card>
+  <Card title="Commandes" icon="shopping-cart" href="/application/commandes">
+    Faire avancer vos commandes.
+  </Card>
+</CardGroup>

@@ -1,0 +1,64 @@
+---
+title: "Envoyer vos produits dans le catalogue WhatsApp"
+description: "Vos produits deviennent des fiches cliquables dans WhatsApp, avec photo, prix et bouton."
+icon: "layout-grid"
+---
+
+Le catalogue WhatsApp affiche vos produits directement dans la conversation, avec leur photo et leur prix. Quand un client demande un produit, l'assistant peut lui envoyer la fiche au lieu d'un simple texte.
+
+<Info>
+  Le catalogue n'est disponible que pour un numéro relié avec **Meta Embedded**. L'onglet **Catalogue** n'apparaît pas autrement. Voir [Relier votre numéro WhatsApp](/connecter/whatsapp-relier).
+</Info>
+
+## Relier votre catalogue
+
+La première fois, Woura cherche les catalogues de votre compte Meta. L'écran **Relier votre catalogue WhatsApp** vous propose ceux qu'il trouve. Choisissez le bon, puis cliquez sur **Relier ce catalogue**.
+
+Aucun catalogue trouvé ? Créez-en un dans votre Business Manager (Gestionnaire de commerce de Meta), puis revenez. Voir l'[aide de Meta sur les catalogues](https://www.facebook.com/business/help).
+
+## Envoyer vos produits
+
+<Steps>
+  <Step title="Ouvrez l'onglet Catalogue">
+    Menu **Assistant WhatsApp**, onglet **Catalogue**. L'écran **Vos produits dans WhatsApp** compte vos produits : **Produits actifs**, **Dans WhatsApp**, **Pas encore**.
+
+    <Frame caption="L'onglet « Catalogue » et l'aperçu d'une fiche produit dans WhatsApp.">
+      <img src="/images/connecter/catalogue-whatsapp/01-catalogue.png" alt="Onglet Catalogue : compteurs Produits actifs, Dans WhatsApp et Pas encore, liste des produits avec le badge Pas encore, et l'aperçu d'une fiche produit dans WhatsApp." />
+    </Frame>
+  </Step>
+  <Step title="Choisissez les produits">
+    Cochez les produits à envoyer, ou cliquez sur **Tout cocher**. **Seulement ceux qui n'y sont pas** masque ceux déjà envoyés.
+  </Step>
+  <Step title="Laissez l'IA soigner les titres (facultatif)">
+    Activez **Laisser l'IA soigner les titres et descriptions** : avant l'envoi, elle reformule chaque fiche pour qu'elle donne envie. **Vos produits dans Woura ne changent pas** : seule la version WhatsApp est reformulée.
+  </Step>
+  <Step title="Envoyez">
+    Cliquez sur **Envoyer N produits**, ou **Tout envoyer** si rien n'est coché. Les produits envoyés passent au badge **Dans WhatsApp**.
+  </Step>
+</Steps>
+
+<Warning>
+  Un produit **sans photo n'est pas envoyé** : WhatsApp exige une image. Woura l'indique sous le produit : « Sans photo, il ne sera pas envoyé ». Ajoutez une photo dans **Produits**, puis recommencez.
+</Warning>
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="J'ai changé un prix : faut-il renvoyer le produit ?">
+    Oui. Sélectionnez le produit dans l'onglet **Catalogue** et envoyez-le de nouveau : la fiche WhatsApp est mise à jour.
+  </Accordion>
+  <Accordion title="Mon numéro est relié en mode OTP : pourquoi pas d'onglet Catalogue ?">
+    Le catalogue passe par un compte WhatsApp Business de Meta, relié avec **Meta Embedded**. [Contactez le support](/aide/contacter-le-support) si vous voulez changer de mode.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="L'assistant WhatsApp" icon="bot" href="/connecter/assistant-whatsapp">
+    Régler ce que dit l'assistant.
+  </Card>
+  <Card title="Campagnes WhatsApp" icon="megaphone" href="/connecter/campagnes-whatsapp">
+    Annoncer une offre à vos clients.
+  </Card>
+</CardGroup>

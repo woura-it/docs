@@ -1,0 +1,86 @@
+---
+title: "Connecter une boutique YouCan"
+description: "Reliez votre boutique YouCan à Woura en autorisant Woura chez YouCan, sans clé à recopier."
+icon: "link"
+---
+
+Relier YouCan à Woura fait arriver vos nouvelles commandes YouCan dans Woura. Vous ne recopiez aucune clé : vous autorisez simplement Woura depuis votre compte YouCan.
+
+<Info>
+  Il vous faut un accès propriétaire ou administrateur à votre boutique YouCan.
+</Info>
+
+## Étapes
+
+<Steps>
+  <Step title="Ouvrez la fenêtre YouCan dans Woura">
+    Menu **Ma boutique en ligne**, bouton **Ajouter une boutique**. Choisissez **Oui, j'ai déjà une boutique**, puis **Boutique YouCan**.
+
+    <Frame caption="La fenêtre « Connecter YouCan ».">
+      <img src="/images/connecter/youcan/01-formulaire.png" alt="Fenêtre Connecter YouCan avec le rappel des étapes, le nom de la boutique, le pays, la devise et le bouton Connecter avec YouCan." />
+    </Frame>
+  </Step>
+  <Step title="Renseignez votre boutique">
+    Saisissez le **Nom de la boutique**, puis choisissez le **Pays** et la **Devise principale**. Ajoutez un logo si vous le souhaitez.
+  </Step>
+  <Step title="Autorisez Woura chez YouCan">
+    Cliquez sur **Connecter avec YouCan**. Vous êtes redirigé vers YouCan. Connectez-vous si besoin, puis acceptez l'accès demandé par Woura.
+  </Step>
+  <Step title="Revenez dans Woura">
+    YouCan vous renvoie automatiquement vers Woura. Le message « Boutique YouCan connectée ! » confirme la liaison, et la boutique devient votre **boutique active**.
+
+    <Frame caption="Le retour dans Woura, une fois l'accès accepté.">
+      <img src="/images/connecter/youcan/03-connectee.png" alt="Fenêtre Boutique YouCan connectée ! au retour dans Woura." />
+    </Frame>
+  </Step>
+</Steps>
+
+## Ce qui se synchronise
+
+| Quoi | Quand |
+|---|---|
+| Vos **produits** | Une fois, à la connexion. |
+| Vos **nouvelles commandes** | En temps réel. |
+| Les **changements de statut** faits dans YouCan | **Ne remontent pas tout seuls.** Lancez **Actualiser** sur la page **Commandes**. |
+| Vos **commandes passées** | Quand vous lancez **Actualiser**, en choisissant combien de jours remonter. |
+
+<Warning>
+  Après la connexion, vos produits YouCan ne se mettent plus à jour dans Woura : il n'y a pas de bouton de synchronisation des produits pour YouCan. Un nouveau produit ou un changement de prix fait dans YouCan doit être reporté à la main dans Woura, menu **Produits**.
+</Warning>
+
+## Si la connexion échoue
+
+Au retour de YouCan, Woura explique ce qui s'est passé et propose **Relancer la connexion**.
+
+<Frame caption="Exemple : l'accès a été refusé chez YouCan.">
+  <img src="/images/connecter/youcan/04-autorisation-refusee.png" alt="Fenêtre Autorisation refusée avec le bouton Relancer la connexion." />
+</Frame>
+
+| Message | Ce qui s'est passé | Que faire |
+|---|---|---|
+| **Autorisation refusée** | Vous avez refusé l'accès chez YouCan. | Cliquez sur **Relancer la connexion** et acceptez l'accès. |
+| **La connexion a expiré** | Le lien d'autorisation n'était plus valable. | Relancez la connexion depuis **Ma boutique en ligne**. |
+| **Limite de boutiques atteinte** | Votre plan ne permet pas une boutique de plus. | Passez à un plan supérieur, puis relancez la connexion. |
+| **YouCan n'a pas confirmé la connexion** | YouCan n'a pas répondu correctement. | Réessayez dans quelques minutes. Si ça continue, [contactez le support](/aide/contacter-le-support). |
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="J'ai livré une commande dans YouCan, elle est toujours « En attente » dans Woura.">
+    Les changements de statut faits dans YouCan ne remontent pas tout seuls. Le plus simple : traitez vos commandes directement dans Woura. Sinon, lancez **Actualiser** sur la page **Commandes**.
+  </Accordion>
+  <Accordion title="Dois-je saisir une clé ou un mot de passe YouCan dans Woura ?">
+    Non. Woura ne vous demande jamais votre mot de passe YouCan. Vous vous connectez chez YouCan, sur le site de YouCan.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Ce qui se synchronise" icon="refresh-cw" href="/connecter/synchronisation">
+    Relancer une synchronisation.
+  </Card>
+  <Card title="Commandes" icon="shopping-cart" href="/application/commandes">
+    Traiter vos commandes dans Woura.
+  </Card>
+</CardGroup>

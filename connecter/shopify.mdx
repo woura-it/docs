@@ -1,0 +1,108 @@
+---
+title: "Connecter une boutique Shopify"
+description: "Reliez votre boutique Shopify à Woura avec l'application Woura Africa et votre code unique."
+icon: "shopping-bag"
+---
+
+Relier Shopify à Woura fait arriver vos commandes Shopify dans Woura, en temps réel. Vous les confirmez, les faites livrer et suivez vos chiffres depuis Woura, sans changer de boutique.
+
+<Info>
+  Il vous faut un accès administrateur à votre boutique Shopify, pour installer une application.
+</Info>
+
+## Avant de commencer
+
+- La liaison passe par l'application Shopify **Woura Africa**. Elle affiche un **Code unique** propre à votre boutique : c'est lui que Woura vous demande.
+- Une boutique Shopify ne peut être liée qu'à un seul compte Woura.
+- Recevoir et gérer vos commandes ne coûte aucun crédit.
+
+## Étapes
+
+<Steps>
+  <Step title="Ouvrez la fenêtre Shopify dans Woura">
+    Menu **Ma boutique en ligne**, bouton **Ajouter une boutique**. Choisissez **Oui, j'ai déjà une boutique**, puis **Boutique Shopify**.
+
+    <Frame caption="La fenêtre « Connecter Shopify ».">
+      <img src="/images/connecter/shopify/01-formulaire.png" alt="Fenêtre Connecter Shopify avec l'encadré Comment connecter votre boutique Shopify, le bouton Installer l'app Shopify, et les champs Code unique, Pays, Devise principale et Nom de la boutique." />
+    </Frame>
+  </Step>
+  <Step title="Installez l'application Woura Africa">
+    Cliquez sur **Installer l'app Shopify**. La page de l'application s'ouvre dans l'App Store Shopify ([apps.shopify.com/woura-africa](https://apps.shopify.com/woura-africa)).
+
+    Chez Shopify, cliquez sur le bouton d'installation, puis acceptez les autorisations demandées. Woura a besoin de lire et mettre à jour vos commandes, vos produits et vos clients.
+  </Step>
+  <Step title="Récupérez votre code unique">
+    L'application **Woura Africa** affiche une carte **Connectez votre boutique** avec deux informations :
+    - **Domaine** : l'adresse de votre boutique, en `.myshopify.com` ;
+    - **Code unique** : le code à reporter dans Woura.
+
+    Cliquez sur **Copier** à côté de **Code unique**.
+
+    <Tip>
+      Pour retrouver ce code plus tard : dans votre admin Shopify, ouvrez **Applications**, puis **Woura Africa**.
+    </Tip>
+  </Step>
+  <Step title="Collez le code dans Woura">
+    Revenez dans la fenêtre **Connecter Shopify**. Collez le code dans **Code unique**.
+
+    Choisissez votre **Pays** et votre **Devise principale**, puis saisissez le **Nom de la boutique**. Ajoutez un logo si vous le souhaitez.
+  </Step>
+  <Step title="Liez la boutique">
+    Cliquez sur **Lier la boutique**. Le message « Boutique liée avec succès ! » confirme la liaison. Votre boutique Shopify devient votre **boutique active** : les commandes, produits et chiffres affichés sont désormais les siens.
+  </Step>
+</Steps>
+
+## La liaison automatique
+
+Quand vous ouvrez l'application **Woura Africa** depuis Shopify et que votre boutique n'est encore liée à aucun compte, l'application vous envoie directement sur Woura. Vous n'avez alors rien à recopier :
+
+- **Vous n'êtes pas connecté à Woura** : la page **Finaliser la connexion de votre boutique** vous demande de vous connecter. Ensuite, Woura ouvre la fenêtre Shopify déjà remplie.
+- **Vous êtes connecté** : Woura prépare la connexion, puis ouvre la fenêtre Shopify avec le code déjà rempli. Complétez le pays, la devise et le nom, puis cliquez sur **Lier la boutique**.
+- **La boutique est déjà liée à votre compte** : Woura affiche directement « Boutique Shopify connectée ! ».
+
+<Frame caption="Le message de confirmation, une fois la boutique liée.">
+  <img src="/images/connecter/shopify/03-connectee.png" alt="Fenêtre Boutique Shopify connectée ! indiquant que la boutique est maintenant liée à Woura." />
+</Frame>
+
+Si vous voyez **Lien invalide**, le code manque dans le lien. Relancez l'ouverture depuis l'application **Woura Africa** dans Shopify.
+
+## Ce qui se synchronise
+
+| Quoi | Quand |
+|---|---|
+| Vos **produits** | Une fois, au moment de la liaison. Ensuite, quand vous lancez **Synchroniser avec Shopify** sur la page **Produits**. |
+| Vos **nouvelles commandes** | En temps réel, dès qu'elles sont passées sur Shopify. |
+| Les **changements de vos commandes** sur Shopify | En temps réel. |
+| Vos **commandes passées** avant la liaison | Seulement si vous lancez **Actualiser** sur la page **Commandes**, en choisissant combien de jours remonter. |
+
+Détails : [Ce qui se synchronise](/connecter/synchronisation).
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="« Code invalide ou boutique déjà liée à un compte. »">
+    Deux causes possibles :
+    - le code a été mal copié : recopiez-le avec le bouton **Copier** de l'application, sans espace ;
+    - la boutique est déjà liée, à votre compte ou à un autre. Regardez dans **Ma boutique en ligne**. Si elle est liée à un autre compte, [contactez le support](/aide/contacter-le-support).
+  </Accordion>
+  <Accordion title="« Limite de boutiques atteinte pour votre abonnement. »">
+    Votre plan ne permet pas une boutique de plus. Passez à un plan supérieur dans **Abonnement et crédits**, puis recommencez.
+  </Accordion>
+  <Accordion title="Mes anciennes commandes Shopify n'apparaissent pas.">
+    C'est normal : seules les commandes passées après la liaison arrivent toutes seules. Ouvrez **Commandes**, cliquez sur **Actualiser**, indiquez la **Profondeur (jours)**, puis **Lancer la synchronisation**.
+  </Accordion>
+  <Accordion title="J'ai modifié un prix sur Shopify, il n'a pas changé dans Woura.">
+    Les produits ne se mettent pas à jour tout seuls. Ouvrez **Produits** et cliquez sur **Synchroniser avec Shopify**.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Ce qui se synchronise" icon="refresh-cw" href="/connecter/synchronisation">
+    Relancer une synchronisation.
+  </Card>
+  <Card title="Commandes" icon="shopping-cart" href="/application/commandes">
+    Traiter vos commandes Shopify dans Woura.
+  </Card>
+</CardGroup>

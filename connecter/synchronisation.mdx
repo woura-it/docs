@@ -1,0 +1,92 @@
+---
+title: "Ce qui se synchronise"
+description: "Ce qui arrive tout seul de Shopify, WooCommerce et YouCan, et comment relancer une synchronisation."
+icon: "refresh-cw"
+---
+
+La **synchronisation**, c'est la copie de vos produits et de vos commandes depuis votre boutique Shopify, WooCommerce ou YouCan vers Woura. L'essentiel se fait tout seul. Parfois, il faut la relancer à la main, par exemple pour récupérer d'anciennes commandes.
+
+## Ce qui arrive tout seul
+
+| | Shopify | WooCommerce | YouCan |
+|---|---|---|---|
+| Produits à la connexion | Oui | Oui | Oui |
+| Produits modifiés ensuite | Non : relancez | Oui, en temps réel | Non, et pas de relance possible |
+| Nouvelles commandes | Oui, en temps réel | Oui, en temps réel | Oui, en temps réel |
+| Changements de statut faits sur la plateforme | Oui, en temps réel | Oui, en temps réel | Non : relancez |
+| Commandes passées avant la connexion | Non : relancez | Non : relancez | Non : relancez |
+
+<Info>
+  Recevoir et synchroniser vos commandes ne coûte aucun crédit.
+</Info>
+
+## Relancer la synchronisation des commandes
+
+<Steps>
+  <Step title="Ouvrez la page Commandes">
+    Vérifiez que la bonne boutique est **active**, puis ouvrez **Commandes**.
+  </Step>
+  <Step title="Cliquez sur Actualiser">
+    En haut à droite, cliquez sur **Actualiser**. La fenêtre **Synchronisation** s'ouvre.
+  </Step>
+  <Step title="Choisissez la profondeur">
+    Dans **Profondeur (jours)**, indiquez combien de jours remonter, de 1 à 365. Par défaut : 14 jours.
+  </Step>
+  <Step title="Lancez">
+    Cliquez sur **Lancer la synchronisation** et gardez la fenêtre ouverte jusqu'au message « Synchronisation effectuée avec succès ».
+
+    <Frame caption="La fenêtre « Synchronisation » des commandes.">
+      <img src="/images/connecter/synchronisation/01-commandes.png" alt="Fenêtre Synchronisation avec le champ Profondeur (jours) et le bouton Lancer la synchronisation." />
+    </Frame>
+  </Step>
+</Steps>
+
+<Note>
+  La fenêtre affiche une note sur le quota d'abonnement. Avec les plans en crédits, recevoir des commandes ne coûte rien.
+</Note>
+
+## Relancer la synchronisation des produits
+
+Pour Shopify et WooCommerce seulement.
+
+<Steps>
+  <Step title="Ouvrez la page Produits">
+    Menu **Produits**, avec la bonne boutique active.
+  </Step>
+  <Step title="Lancez">
+    Cliquez sur **Synchroniser avec Shopify** (ou **WooCommerce**), puis sur **Lancer la synchronisation**. Titres, prix et stocks sont mis à jour, et les produits absents de Woura sont créés.
+
+    <Frame caption="La fenêtre « Synchronisation Produits ».">
+      <img src="/images/connecter/synchronisation/02-produits.png" alt="Fenêtre Synchronisation Produits avec l'avertissement sur les modifications locales et le bouton Lancer la synchronisation." />
+    </Frame>
+  </Step>
+</Steps>
+
+<Warning>
+  La synchronisation des produits remplace ce qui vient de votre plateforme. Une modification faite dans Woura sur un produit synchronisé peut être écrasée. Changez plutôt vos prix et vos stocks sur Shopify ou WooCommerce, puis synchronisez.
+</Warning>
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="Une commande est sur Shopify mais pas dans Woura.">
+    Vérifiez la boutique active. Puis lancez **Actualiser** sur la page **Commandes**, avec une profondeur qui couvre la date de la commande.
+  </Accordion>
+  <Accordion title="J'ai converti ma boutique en vitrine Woura : Actualiser ne marche plus.">
+    C'est normal : après une conversion, la synchronisation manuelle n'est plus disponible. Les nouvelles commandes, elles, continuent d'arriver toutes seules.
+  </Accordion>
+  <Accordion title="Ma boutique est une boutique Woura : à quoi sert Actualiser ?">
+    À rien : les commandes de votre boutique Woura arrivent directement dans Woura, sans synchronisation. Si vous lancez **Actualiser**, Woura répond que la synchronisation n'est pas disponible pour ce type de boutique.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Commandes" icon="shopping-cart" href="/application/commandes">
+    Traiter les commandes récupérées.
+  </Card>
+  <Card title="Gérer plusieurs boutiques" icon="layers" href="/connecter/plusieurs-boutiques">
+    Changer de boutique active.
+  </Card>
+</CardGroup>

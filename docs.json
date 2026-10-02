@@ -16,7 +16,10 @@
     "eyebrows": "breadcrumbs"
   },
   "contextual": {
-    "options": ["copy", "view"]
+    "options": [
+      "copy",
+      "view"
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -72,6 +75,35 @@
                   "demarrer/premiere-journee",
                   "demarrer/credits-et-abonnement",
                   "demarrer/glossaire"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Connecter",
+            "icon": "plug",
+            "groups": [
+              {
+                "group": "Vos boutiques",
+                "pages": [
+                  "connecter/choisir-sa-situation",
+                  "connecter/shopify",
+                  "connecter/woocommerce",
+                  "connecter/youcan",
+                  "connecter/boutique-woura",
+                  "connecter/plusieurs-boutiques",
+                  "connecter/synchronisation"
+                ]
+              },
+              {
+                "group": "WhatsApp",
+                "pages": [
+                  "connecter/whatsapp-relier",
+                  "connecter/assistant-whatsapp",
+                  "connecter/catalogue-whatsapp",
+                  "connecter/campagnes-whatsapp",
+                  "connecter/notifications-whatsapp",
+                  "connecter/fenetre-24-heures"
                 ]
               }
             ]
