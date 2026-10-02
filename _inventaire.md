@@ -136,6 +136,13 @@
 | « Discutez avec Wou » (`WOU_ASSISTANT`) | drapeau |
 | Boutique indépendante, QR code WhatsApp | inaccessible |
 
+## Décisions de l'utilisateur (02/10/2026)
+
+- Facturation : seul le modèle **en crédits** (Gratuit / Pro / Business, « Abonnement et crédits ») est documenté. « Forfaits & Packs » ne l'est pas.
+- Boutique Woura (« Non, pas encore » + builder) : **ouverte à tous** en production.
+- Assistant WhatsApp, `WHATSAPP_FLOW_V2`, Campagnes WhatsApp, mode OTP (BSP) : **actifs** en production → documentés.
+- Correctifs restés sur `dev` (« Code unique » Shopify, « Alerte WhatsApp marchand ») : l'utilisateur les déploie → la doc décrit le comportement **corrigé**.
+
 ## Questions ouvertes (à trancher par l'utilisateur)
 
 1. **Plateformes et boutique Woura en production** : Shopify, WooCommerce, YouCan et WhatsApp sont-ils tous « actifs » ? `WOURA_PUBLIC_STOREFRONT` est-il ouvert à tous, ou encore un pilote ? (Toute la partie « Boutique en ligne » en dépend.)
