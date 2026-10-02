@@ -1,0 +1,73 @@
+---
+title: "Le panier et la commande"
+description: "Comment un client commande sur votre boutique : directement depuis la fiche, ou avec un panier."
+icon: "shopping-cart"
+---
+
+Vos clients peuvent commander de deux façons : **directement depuis la fiche produit**, ou en ajoutant plusieurs produits au **panier**. Dans les deux cas, ils remplissent le même formulaire.
+
+## Commander depuis la fiche produit
+
+<Steps>
+  <Step title="Le client choisit">
+    Il choisit une option si le produit en a (taille, couleur…), puis un palier d'offre (par exemple « 2 pots ») ou une **Quantité**. **Commander à l'unité** annule le palier.
+
+    <Frame caption="Les paliers d'une offre par quantité.">
+      <img src="/images/boutique/clients/panier-commande/01-offres.png" alt="Fiche produit avec les paliers 1 pot, 2 pots et 3 pots, la quantité et le bouton Ajouter au panier." />
+    </Frame>
+  </Step>
+  <Step title="Il remplit le formulaire">
+    - **Zone de livraison**, si vous livrez par zone : les frais de la zone s'affichent ;
+    - les champs de votre formulaire : **Nom complet**, **Numéro WhatsApp**, ville, adresse…
+
+    <Frame caption="Le formulaire de commande, sous le produit.">
+      <img src="/images/boutique/clients/panier-commande/02-formulaire.png" alt="Formulaire de commande avec la zone de livraison, le nom complet, le numéro WhatsApp, la ville et l'adresse." />
+    </Frame>
+  </Step>
+  <Step title="Il ajoute un code promo (facultatif)">
+    **Vous avez un code promo ?**, puis **Appliquer**. La remise apparaît dans le récapitulatif.
+  </Step>
+  <Step title="Il vérifie le récapitulatif">
+    **Sous-total**, **Remise**, **Livraison** (« selon la zone », « Offerte » ou le montant), **Total**, et le **Délai**.
+  </Step>
+  <Step title="Il choisit comment payer et valide">
+    Voir [Les modes de paiement côté client](/boutique/clients/paiement). Le bouton change selon le choix : **Commander maintenant**, **Payer …** ou **Envoyer ma commande**.
+  </Step>
+</Steps>
+
+Si vous avez une règle d'upsell **Avant le paiement**, une fenêtre **Offre spéciale** apparaît au moment de valider. Voir [Upsell et downsell](/boutique/upsell-downsell).
+
+## Commander avec le panier
+
+**Ajouter au panier** garde le produit et laisse le client continuer ses achats. L'icône du panier, en haut, compte les articles.
+
+Sur la page **Votre panier**, il ajuste les quantités, retire un produit, puis remplit **Vos coordonnées** à droite et valide.
+
+<Frame caption="La page « Votre panier ».">
+  <img src="/images/boutique/clients/panier-commande/04-panier.png" alt="Page Votre panier avec un produit, sa quantité, et à droite le formulaire Vos coordonnées, le récapitulatif et le mode de paiement." />
+</Frame>
+
+Limites du panier :
+- 20 produits différents au plus, et 99 unités par produit ;
+- les **offres par quantité** se commandent seulement depuis la fiche produit ;
+- les propositions d'upsell ne s'affichent pas.
+
+## Si quelque chose bloque
+
+Le client voit un message clair :
+- un champ obligatoire est vide : « Le champ « … » est obligatoire. » ;
+- le numéro paraît incomplet : « Ce numéro de téléphone semble incomplet. Vérifiez-le. » ;
+- le produit est en rupture et vous bloquez les commandes sans stock : « Ce produit est en rupture de stock. ».
+
+Si votre formulaire n'a aucun champ actif, la commande en ligne est fermée : « La commande en ligne n'est pas ouverte dans cette boutique. ».
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Les modes de paiement côté client" icon="wallet" href="/boutique/clients/paiement">
+    À la livraison, en ligne, par transfert.
+  </Card>
+  <Card title="Après la commande" icon="package-check" href="/boutique/clients/apres-commande">
+    Confirmation, suivi, avis.
+  </Card>
+</CardGroup>

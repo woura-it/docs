@@ -180,3 +180,15 @@
 - **Shopify** : aide « code affiché dans votre admin Shopify » alors que l'app s'ouvre hors de l'admin (`embedded = false`) ; bouton « Voir le tutoriel vidéo » jamais affiché (URL non configurée).
 - **Vitrine de dev :3002** : rechargements en boucle (Turbopack « stale », socket HMR fermé) → quotas DRF par IP épuisés ; captures faites sur une copie webpack :3012.
 - **Mintlify** : CLI refusée sous Node 25 ; Node 22 téléchargé dans le scratchpad (avec accord).
+
+## Écarts relevés (lot 3 — boutique en ligne)
+
+- **Message de confirmation** : l'éditeur annonce les variables `{nom}`, `{produit}`, `{montant}`, mais ni la vitrine (`storefront/lib/utils.ts` `getCodConfirmationMessage`) ni l'API ne les remplacent : le client les voit brutes. La doc conseille un message sans variable.
+- **Variante « Default »** affichée au client (confirmation, suivi) pour un produit sans variante.
+- **Éditeur, nom de boutique** : le sélecteur lit la boutique mémorisée (`woura-shop-switcher` en localStorage), pas celle de l'URL : un lien direct vers `/builder/<id>` peut afficher le nom d'une autre boutique.
+- **Aperçu de l'éditeur en dev** : `NEXT_PUBLIC_SHOP_PREVIEW_BASE` pointe sur `localhost:3000` (l'application) et `frame-src` n'autorise que `:3000` → aperçu vide en local. Captures faites sur une copie (:3011 → vitrine :3012).
+- **Bannière** : aide « Max 5 MB » mais refus au-delà de 2 Mo (déjà relevé) ; documenté en Warning.
+- **Modèles de politiques** : « paiement exclusivement à la livraison » ; documenté en Warning.
+- **Offres / Upsell** : « FCFA » codé en dur dans l'éditeur ; documenté en Note.
+- **Champ « Code promo » du formulaire** : le lien « Vous avez un code promo ? » s'affiche toujours dans la vitrine, indépendamment de ce champ.
+- **Domaine de démo** : les captures montrent l'adresse fictive `maison-awa.woura.shop` (sous-domaine inexistant du domaine de prod) — à valider.

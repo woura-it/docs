@@ -107,6 +107,50 @@
                 ]
               }
             ]
+          },
+          {
+            "tab": "Boutique en ligne",
+            "icon": "store",
+            "groups": [
+              {
+                "group": "Créer votre boutique",
+                "pages": [
+                  "boutique/creer-avec-assistant",
+                  "boutique/choisir-boutique",
+                  "boutique/identite",
+                  "boutique/theme",
+                  "boutique/produits-affiches"
+                ]
+              },
+              {
+                "group": "Vendre",
+                "pages": [
+                  "boutique/commande-et-livraison",
+                  "boutique/offres-quantite",
+                  "boutique/upsell-downsell",
+                  "boutique/codes-promo",
+                  "boutique/avis-clients",
+                  "boutique/pixels"
+                ]
+              },
+              {
+                "group": "Régler et publier",
+                "pages": [
+                  "boutique/politiques",
+                  "boutique/parametres",
+                  "boutique/publier"
+                ]
+              },
+              {
+                "group": "Ce que voient vos clients",
+                "pages": [
+                  "boutique/clients/visite",
+                  "boutique/clients/panier-commande",
+                  "boutique/clients/paiement",
+                  "boutique/clients/apres-commande"
+                ]
+              }
+            ]
           }
         ]
       }

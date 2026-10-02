@@ -1,0 +1,98 @@
+---
+title: "Paramètres : domaine, référencement, contacts, boutique"
+description: "Votre propre adresse web, le référencement sur Google, vos contacts, le mot de passe, la pause et la suppression de la boutique."
+icon: "settings"
+---
+
+La page **Paramètres** de l'éditeur regroupe les réglages avancés, en quatre onglets : **Domaine**, **SEO**, **Contacts**, **Boutique**.
+
+## Domaine personnalisé
+
+Par défaut, votre boutique a une adresse en `.woura.shop`, par exemple `maison-awa.woura.shop`. Avec un **domaine personnalisé**, elle s'affiche sur votre propre adresse, par exemple `boutique.monsite.com`.
+
+<Info>
+  Il vous faut un nom de domaine déjà acheté (chez OVH, Namecheap, GoDaddy, LWS, Hostinger, Cloudflare…) et l'accès à sa **zone DNS**, l'écran où l'on règle les adresses du domaine.
+</Info>
+
+<Frame caption="L'onglet « Domaine ».">
+  <img src="/images/boutique/parametres/01-domaine.png" alt="Onglet Domaine avec les trois étapes : choisir l'adresse, ajouter l'enregistrement DNS, vérifier la configuration." />
+</Frame>
+
+<Steps>
+  <Step title="Choisissez l'adresse">
+    Dans **Votre domaine**, saisissez l'adresse voulue, sans `https://` ni barre oblique. Utilisez un **sous-domaine** de votre nom de domaine : `www.monsite.com` ou `boutique.monsite.com`.
+
+    Un domaine « nu » comme `monsite.com` ne fonctionne pas : Woura vous le signale et propose **Utiliser www.monsite.com**.
+  </Step>
+  <Step title="Ajoutez l'enregistrement chez votre fournisseur">
+    Connectez-vous chez le fournisseur de votre nom de domaine, ouvrez la zone DNS, et ajoutez un enregistrement avec exactement les valeurs affichées par Woura :
+    - **Type** : `CNAME` ;
+    - **Nom** (ou Hôte) : la partie avant votre domaine, par exemple `boutique` ;
+    - **Cible** (ou Valeur) : `shops.woura.shop` ;
+    - **TTL** : 3600, ou la valeur par défaut.
+
+    Supprimez d'abord tout enregistrement A, AAAA ou CNAME qui porte déjà ce nom. Sur Cloudflare, désactivez le proxy pour cet enregistrement (nuage gris, « DNS uniquement »).
+  </Step>
+  <Step title="Vérifiez">
+    Le changement met de quelques minutes à 24 heures à se propager. Cliquez ensuite sur **Vérifier le DNS**, autant de fois que nécessaire.
+
+    Quand tout est bon, Woura affiche **Vérifié** et explique que le certificat de sécurité (le cadenas HTTPS) s'active tout seul : comptez une dizaine de minutes avant que la boutique s'ouvre sur cette adresse.
+  </Step>
+</Steps>
+
+<Warning>
+  Si la boutique ne s'ouvre toujours pas sur votre adresse une heure après la vérification, [contactez le support](/aide/contacter-le-support).
+</Warning>
+
+Si la vérification échoue, Woura dit pourquoi : aucun CNAME trouvé, DNS qui ne répond pas, ou chaîne d'alias trop longue. Corrigez chez votre fournisseur, puis relancez. Voir aussi [Résoudre un problème](/aide/resoudre-un-probleme).
+
+## SEO (référencement)
+
+Le **SEO** règle la façon dont votre boutique apparaît dans Google :
+- **Titre SEO** : 70 caractères au plus, par exemple « Maison Awa — cosmétiques naturels à Cotonou » ;
+- **Meta description** : la phrase sous le titre dans les résultats, 160 caractères au plus.
+
+<Frame caption="L'onglet « SEO ».">
+  <img src="/images/boutique/parametres/02-seo.png" alt="Onglet SEO avec le titre SEO et la meta description." />
+</Frame>
+
+## Contacts
+
+Vos coordonnées affichées en bas de la boutique et sur la page **Nous contacter** : e-mail, téléphone, WhatsApp, adresse, et vos réseaux sociaux (Facebook, Instagram, TikTok, YouTube, X). Le WhatsApp est le même que dans **Identité**.
+
+<Frame caption="L'onglet « Contacts ».">
+  <img src="/images/boutique/parametres/03-contacts.png" alt="Onglet Contacts avec l'e-mail, le téléphone, le WhatsApp, l'adresse et les réseaux sociaux." />
+</Frame>
+
+## Boutique
+
+<Frame caption="L'onglet « Boutique » : mot de passe, pause et zone de danger.">
+  <img src="/images/boutique/parametres/05-zone-de-danger.png" alt="Onglet Boutique avec la protection par mot de passe, la mise en pause et la suppression de la boutique." />
+</Frame>
+
+### Protéger par un mot de passe
+
+Activez **Activer la protection** pour réserver votre boutique à vos clients invités : les visiteurs doivent saisir un **Mot de passe**. Ajoutez un **Message personnalisé (optionnel)**, par exemple « Boutique réservée aux membres. Entrez votre code. ».
+
+### Mettre en pause
+
+**Mettre en pause la boutique** la rend inaccessible à vos clients, sans rien perdre de votre configuration. **Réactiver la boutique** la remet en ligne. Seule une boutique publiée peut être mise en pause.
+
+### Supprimer la boutique
+
+<Warning>
+  **La suppression est définitive.** Tous les produits et toutes les commandes de la boutique en sont dissociés.
+</Warning>
+
+Dans **Zone de danger**, cliquez sur **Supprimer**. Pour confirmer, tapez l'identifiant de la boutique affiché dans la fenêtre, puis cliquez sur **Supprimer définitivement**. Pour une pause temporaire, préférez **Mettre en pause la boutique**.
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Prévisualiser et publier" icon="rocket" href="/boutique/publier">
+    Mettre vos changements en ligne.
+  </Card>
+  <Card title="Identité" icon="badge" href="/boutique/identite">
+    Le sous-domaine en woura.shop.
+  </Card>
+</CardGroup>

@@ -1,0 +1,147 @@
+---
+title: "Commande et livraison"
+description: "Le formulaire de commande, les moyens de paiement, les frais de livraison et les messages de confirmation."
+icon: "truck"
+---
+
+La page **COD & Livraison** de l'éditeur règle tout ce qui se passe quand un client commande : les questions posées, la façon de payer, les frais de livraison et les messages envoyés. **COD** signifie *Cash On Delivery*, c'est-à-dire paiement à la livraison.
+
+Elle compte quatre onglets : **Formulaire**, **Paiement**, **Livraison**, **Messages**.
+
+## Formulaire
+
+Le formulaire est ce que le client remplit pour commander.
+
+<Frame caption="Onglet « Formulaire » : les champs de la commande.">
+  <img src="/images/boutique/commande-et-livraison/01-formulaire.png" alt="Onglet Formulaire de COD et Livraison avec l'image et le texte promotionnel, la liste des champs et l'affichage du formulaire." />
+</Frame>
+
+- **Image** et **Texte promotionnel** (facultatifs) : affichés en haut du formulaire, par exemple « Commandez maintenant, livraison offerte ! ».
+- **Les champs** : **Nom complet** et **Numéro WhatsApp** sont toujours demandés. Activez ou désactivez les autres (ville, adresse, quartier, instructions de livraison…), cochez **Requis** pour les rendre obligatoires, et glissez-les pour changer l'ordre.
+- **Ajouter un champ personnalisé** : une question à vous, par exemple « Taille » ou « Couleur préférée ». Types possibles : texte, téléphone, zone de texte, liste déroulante, cases à cocher, boutons radio.
+- **Affichage du formulaire** : **Dans la page**, sous le produit, ou **Dans une modale**, une fenêtre qui s'ouvre au clic sur **Commander maintenant**.
+
+<Tip>
+  Moins il y a de champs, plus vos clients vont au bout. Ne demandez que ce dont votre livreur a vraiment besoin.
+</Tip>
+
+<Frame caption="La fenêtre « Ajouter un champ ».">
+  <img src="/images/boutique/commande-et-livraison/05-champ-personnalise.png" alt="Fenêtre Ajouter un champ avec le type de champ, le libellé, le placeholder et les options." />
+</Frame>
+
+## Paiement
+
+<Frame caption="Onglet « Paiement » : encaissement et paiement par transfert.">
+  <img src="/images/boutique/commande-et-livraison/02-paiement.png" alt="Onglet Paiement avec les modes À la livraison uniquement, Paiement en ligne uniquement et Au choix du client, puis les instructions de paiement par transfert." />
+</Frame>
+
+### Encaissement
+
+| Mode | Ce que fait le client |
+|---|---|
+| **À la livraison uniquement** | Il commande sans payer, puis paie le livreur. C'est le mode par défaut. |
+| **Paiement en ligne uniquement** | Il paie en ligne avant que la commande soit validée. |
+| **Au choix du client** | Il choisit de payer maintenant ou à la livraison. |
+
+Le paiement en ligne passe par **WouraPay** et exige un compte d'encaissement : dans l'application, **Mon compte**, onglet **Encaissements**, **Ouvrir mon compte d'encaissement**. Sans lui, la commande est quand même enregistrée, et elle se paie à la livraison.
+
+**Acompte** (avec le paiement en ligne) : le client paie une partie à la commande, le reste au livreur. Choisissez **Pourcentage du total** ou **Montant fixe**. Woura montre un exemple chiffré : sur une commande de 10 000 F CFA, combien le client paie maintenant et combien au livreur.
+
+<Note>
+  Les paiements en ligne supportent une commission, selon votre plan. Voir [Crédits et abonnement](/demarrer/credits-et-abonnement).
+</Note>
+
+### Paiement par transfert (Mobile Money, virement)
+
+Vous pouvez proposer à vos clients de payer par Mobile Money ou par virement, sur **votre** compte. Vous vérifiez vous-même le paiement avant d'expédier.
+
+<Steps>
+  <Step title="Écrivez vos instructions">
+    Dans **Ce que le client doit faire**, écrivez exactement comment payer : le réseau, votre numéro, le nom affiché, le motif à indiquer. Le texte est montré tel quel au client, retours à la ligne compris (2 000 caractères au plus).
+  </Step>
+  <Step title="Activez le moyen de paiement">
+    Activez **Proposer ce moyen de paiement**. Le client voit alors **Payer par transfert** dans le formulaire de commande.
+  </Step>
+  <Step title="Gardez la capture obligatoire">
+    **Demander la capture du paiement** (activé par défaut) : le client joint une capture de son transfert. La commande reste « preuve à vérifier » jusqu'à votre validation.
+  </Step>
+</Steps>
+
+Quand un client a payé par transfert, vous le validez depuis la commande, dans l'application. Voir [Commandes : paiement par transfert](/application/commandes#paiement-par-transfert).
+
+<Warning>
+  Vérifiez toujours sur **votre** compte Mobile Money ou bancaire que l'argent est bien arrivé avant de valider. Une capture d'écran peut être fausse.
+</Warning>
+
+Ces instructions sont aussi celles de votre assistant WhatsApp : les modifier ici les modifie là-bas.
+
+## Livraison
+
+<Frame caption="Onglet « Livraison » : frais par zone, délai et couverture.">
+  <img src="/images/boutique/commande-et-livraison/03-livraison.png" alt="Onglet Livraison avec la livraison par zone géographique pour Cotonou, Abomey-Calavi et Porto-Novo, le délai, la zone de couverture et le blocage des commandes sans stock." />
+</Frame>
+
+Choisissez comment calculer la livraison :
+- **Livraison gratuite** ;
+- **Tarif fixe** : un seul montant, dans **Frais de livraison** ;
+- **Par zone géographique** : un montant par zone. Cliquez sur **Ajouter une zone**, saisissez la **Zone** (par exemple « Cotonou ») et ses **Frais**. Le client choisit sa zone dans le formulaire, et les frais s'ajoutent tout seuls.
+
+Remplissez aussi :
+- **Délai de livraison**, par exemple « 24 à 48 heures » ;
+- **Zone de couverture**, par exemple « Tout le Bénin ».
+
+Vos clients les voient sur chaque fiche produit.
+
+### Bloquer les commandes quand le stock est à 0
+
+Par défaut, **un stock à 0 ne bloque pas les commandes**. C'est voulu : si vous oubliez de mettre votre stock à jour, vous ne perdez pas de vente.
+
+Si votre stock est tenu à jour, activez **Bloquer les commandes quand le stock est à 0** :
+- un produit sans stock s'affiche en rupture sur votre boutique ;
+- il ne peut plus être commandé au-delà de son stock.
+
+Ce réglage est enregistré tout de suite, sans passer par **Sauvegarder**. C'est le même que dans l'application, **Paramètres** → **Produits** : le changer ici le change là-bas.
+
+## Messages
+
+<Frame caption="Onglet « Messages » : confirmation et notifications WhatsApp.">
+  <img src="/images/boutique/commande-et-livraison/04-messages.png" alt="Onglet Messages avec le message de confirmation de commande, la notification WhatsApp client et son coût, et l'alerte WhatsApp marchand." />
+</Frame>
+
+- **Message de confirmation de commande** : le texte affiché au client juste après sa commande.
+
+  <Warning>
+    L'éditeur propose les variables `{nom}`, `{produit}` et `{montant}`, mais elles ne sont pas encore remplacées : le client les voit telles quelles. Écrivez un message sans variable, par exemple « Merci pour votre commande ! Nous vous appelons très vite pour confirmer la livraison. ».
+  </Warning>
+
+- **Notification WhatsApp client** : une confirmation envoyée au client sur WhatsApp après sa commande, en mode **À la livraison uniquement**. Son coût en crédits par envoi est affiché sous l'interrupteur. Elle ne part que si le modèle de message est validé par Meta (« Modèle de confirmation validé »).
+- **Alerte WhatsApp marchand** : une alerte sur **votre** WhatsApp à chaque nouvelle commande. C'est le même réglage que l'alerte **Nouvelle commande** des **Paramètres** de l'application. Voir [Notifications WhatsApp](/connecter/notifications-whatsapp).
+
+## Ce que voit votre client
+
+Le formulaire apparaît sous chaque produit, avec la zone de livraison, le code promo et le choix du paiement. Voir [Le panier et la commande](/boutique/clients/panier-commande).
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="Un client dit qu'il ne peut pas commander : « rupture de stock ».">
+    Vous avez activé **Bloquer les commandes quand le stock est à 0** et le produit n'a plus de stock dans Woura. Mettez le stock à jour dans l'application, ou désactivez le blocage.
+  </Accordion>
+  <Accordion title="Le client ne voit pas « Payer par transfert ».">
+    Vérifiez que **Ce que le client doit faire** est rempli et que **Proposer ce moyen de paiement** est activé. Sans texte, l'option se désactive toute seule.
+  </Accordion>
+  <Accordion title="Le client a choisi une zone : la livraison est-elle comptée ?">
+    Oui. Les frais de la zone s'ajoutent au total. Une remise de code promo ne s'applique jamais aux frais de livraison.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Codes promo" icon="ticket" href="/boutique/codes-promo">
+    Offrir une réduction.
+  </Card>
+  <Card title="Les modes de paiement côté client" icon="wallet" href="/boutique/clients/paiement">
+    Ce que voit le client au moment de payer.
+  </Card>
+</CardGroup>

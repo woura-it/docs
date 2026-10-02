@@ -1,0 +1,79 @@
+---
+title: "Après la commande : confirmation, suivi et avis"
+description: "La page de confirmation, l'envoi de la capture d'un transfert, le suivi de commande et l'avis après livraison."
+icon: "package-check"
+---
+
+Après sa commande, votre client arrive sur une page de confirmation. Il peut ensuite suivre sa commande, et la noter une fois livrée.
+
+## La page de confirmation
+
+**Commande confirmée !** s'affiche avec votre message de confirmation, puis le détail :
+- le **Numéro de commande**, qui commence par `WS-` : le client doit le garder ;
+- les produits, la livraison, la remise et le **Montant total** ;
+- ce qui est **Déjà payé** et ce qui reste **À payer à la livraison** ;
+- le **Statut** de la commande et le lien **Suivre ma commande**.
+
+<Note>
+  Le détail de la commande s'affiche seulement sur le téléphone ou l'ordinateur qui a passé la commande. Ailleurs, la page confirme simplement que la commande est reçue, sans données personnelles.
+</Note>
+
+### Payer par transfert et envoyer la capture
+
+Si le client a choisi **Payer par transfert**, la page lui indique :
+- « Il vous reste à payer par transfert. La boutique prépare votre commande dès réception. » ;
+- le **Montant à transférer**, livraison comprise ;
+- vos instructions, sous **Comment payer**.
+
+Après son transfert, il clique sous **Après le transfert, joignez la capture** et choisit sa capture d'écran (JPEG, PNG ou WebP, 5 Mo au plus). Il voit alors « Capture reçue ✓ — la boutique la vérifie et prépare votre commande. ».
+
+<Frame caption="La confirmation d'une commande à payer par transfert.">
+  <img src="/images/boutique/clients/apres-commande/01-confirmation-transfert.png" alt="Page Commande confirmée avec le montant à transférer, les instructions de paiement et le champ pour joindre la capture." />
+</Frame>
+
+De votre côté, vous vérifiez sur votre compte que l'argent est arrivé, puis vous validez. Voir [Commandes : paiement par transfert](/application/commandes#paiement-par-transfert).
+
+## Suivre sa commande
+
+Le client ouvre **Suivre ma commande**, en haut de votre boutique. Il saisit son **Numéro de commande** (`WS-…`) et le **Téléphone** donné à la commande, puis clique sur **Suivre**.
+
+Il voit les étapes **Commande reçue**, **Confirmée**, **En livraison**, **Livrée**, le détail de sa commande et où en est son paiement. Une commande annulée l'indique clairement.
+
+<Frame caption="La page « Suivre ma commande ».">
+  <img src="/images/boutique/clients/apres-commande/03-suivi.png" alt="Page Suivre ma commande avec le numéro WS, le téléphone, et les étapes Commande reçue, Confirmée, En livraison et Livrée." />
+</Frame>
+
+<Tip>
+  Quand un client vous demande « où est ma commande ? », envoyez-lui le lien de votre page **Suivre ma commande** : il trouve la réponse seul.
+</Tip>
+
+Les étapes avancent quand vous changez le statut dans l'application :
+
+| Votre statut | Étape vue par le client |
+|---|---|
+| **En attente**, **À rappeler**, **Injoignable** | Commande reçue |
+| **Acceptée**, **Programmée** | Confirmée |
+| **En livraison** | En livraison |
+| **Livrée** | Livrée |
+| **Annulée**, **Retournée** | Commande annulée |
+
+## Laisser un avis
+
+Une fois la commande **Livrée**, la page de confirmation affiche **Votre avis compte**. Le client donne une note de 1 à 5 étoiles à chaque produit, ajoute quelques mots s'il le souhaite, puis clique sur **Publier mon avis**.
+
+<Frame caption="Le formulaire d'avis, sur la page de confirmation d'une commande livrée.">
+  <img src="/images/boutique/clients/apres-commande/02-avis.png" alt="Bloc Votre avis compte avec le prénom, les étoiles et le champ Qu'avez-vous aimé." />
+</Frame>
+
+Seul l'appareil qui a passé la commande peut noter, une seule fois par produit. Voir [Avis clients](/boutique/avis-clients).
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Commandes" icon="shopping-cart" href="/application/commandes">
+    Faire avancer les statuts.
+  </Card>
+  <Card title="Notifications WhatsApp" icon="bell-ring" href="/connecter/notifications-whatsapp">
+    Prévenir le client à chaque étape.
+  </Card>
+</CardGroup>

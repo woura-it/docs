@@ -1,0 +1,56 @@
+---
+title: "Pixels et suivi publicitaire"
+description: "Reliez vos pixels Facebook, TikTok, Google et Snapchat pour mesurer ce que rapportent vos publicités."
+icon: "radar"
+---
+
+Un **pixel** est un petit code fourni par une régie publicitaire (Facebook, TikTok, Google, Snapchat). Placé sur votre boutique, il dit à la régie qui a visité et qui a commandé. Vos publicités sont ainsi mieux ciblées, et vous voyez ce qu'elles rapportent.
+
+Vous n'avez pas de code à installer : vous copiez simplement l'identifiant de votre pixel dans Woura.
+
+## Étapes
+
+<Steps>
+  <Step title="Ouvrez Pixels & Tracking">
+    Dans l'éditeur, cliquez sur **Pixels & Tracking**. Quatre onglets : **Facebook**, **TikTok**, **Google**, **Snap**.
+
+    <Frame caption="La page « Pixels & Tracking ».">
+      <img src="/images/boutique/pixels/01-pixels.png" alt="Page Pixels et Tracking avec les onglets Facebook, TikTok, Google et Snap et le champ Pixel ID." />
+    </Frame>
+  </Step>
+  <Step title="Collez l'identifiant">
+    | Régie | Champ | Où le trouver |
+    |---|---|---|
+    | Facebook | **Pixel ID** (15 ou 16 chiffres) | Facebook Events Manager (Gestionnaire d'événements) |
+    | TikTok | **Pixel ID** | TikTok Events Manager |
+    | Google | **Measurement ID** (commence par `G-`) | Google Analytics, Admin, Flux de données |
+    | Snapchat | **Pixel ID** | Snap Ads Manager, Assets, Pixels |
+  </Step>
+  <Step title="Choisissez les événements (Facebook)">
+    Pour Facebook, sous **Événements suivis**, laissez activés :
+    - **PageView** : visite d'une page de la boutique ;
+    - **ViewContent** : vue d'un produit ;
+    - **InitiateCheckout** : début du formulaire de commande ;
+    - **Lead** : envoi du formulaire de commande.
+  </Step>
+  <Step title="Enregistrez et publiez">
+    Un point vert sur l'onglet et le badge **Actif** confirment le pixel. Cliquez sur **Sauvegarder**, puis [publiez](/boutique/publier).
+  </Step>
+</Steps>
+
+<Note>
+  Vous êtes responsable des données collectées par ces pixels. Mentionnez-les dans vos politiques, en particulier dans les mentions légales. Voir [Politiques](/boutique/politiques).
+</Note>
+
+Pour créer un pixel, consultez l'aide de la régie : [Meta](https://www.facebook.com/business/help), [TikTok](https://ads.tiktok.com/help/), [Google Analytics](https://support.google.com/analytics), [Snapchat](https://businesshelp.snapchat.com).
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Politiques" icon="file-text" href="/boutique/politiques">
+    Livraison, retours, conditions générales.
+  </Card>
+  <Card title="Audience de votre boutique" icon="activity" href="/application/audience">
+    Les visites mesurées par Woura.
+  </Card>
+</CardGroup>
