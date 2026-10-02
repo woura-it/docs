@@ -1,0 +1,158 @@
+---
+title: "Commandes"
+description: "Recevez, confirmez, faites livrer et encaissez vos commandes, de toutes vos sources."
+icon: "shopping-cart"
+---
+
+Le menu **Commandes** réunit toutes les commandes de votre boutique active : boutique Woura, Shopify, WooCommerce, YouCan, WhatsApp, ou saisies à la main. C'est l'écran où vous passerez le plus de temps.
+
+<Info>
+  Recevoir et gérer vos commandes ne coûte aucun crédit.
+</Info>
+
+## La liste des commandes
+
+Chaque carte montre le numéro, la date, le client, le produit, le montant, le statut et la source. Les boutons **Appeler** et **WhatsApp** contactent le client en un geste.
+
+<Frame caption="La liste des commandes sur téléphone.">
+  <img src="/images/application/commandes/01-commandes-mobile.png" alt="Liste des commandes Woura sur téléphone, avec pour chaque commande le statut, le client, le montant et les boutons Appeler et WhatsApp." style={{ maxWidth: "320px", margin: "0 auto" }} />
+</Frame>
+
+- **Rechercher par numéro, client, email…** et **Filtrer** par statut ou par source.
+- **Toutes** / **Programmées** : la vue **Programmées** est un agenda des livraisons prévues.
+
+<Frame caption="La vue « Programmées » : l'agenda des livraisons prévues.">
+  <img src="/images/application/commandes/06-programmees.png" alt="Vue Programmées des commandes sous forme d'agenda." />
+</Frame>
+
+- **Actualiser** récupère les commandes de Shopify, WooCommerce ou YouCan. Voir [Ce qui se synchronise](/connecter/synchronisation).
+- **Créer une commande** : une commande prise par téléphone ou en boutique.
+- **Exporter** : en CSV ou en PDF.
+
+Le chiffre rouge à côté de **Commandes**, dans le menu, compte les commandes **En attente**.
+
+## Les statuts
+
+| Statut | Ce qu'il veut dire | Étapes suivantes possibles |
+|---|---|---|
+| **En attente** | Nouvelle commande, pas encore confirmée. | Acceptée, Annulée |
+| **Acceptée** | Le client a confirmé. | En livraison, Programmée, À rappeler, Injoignable, Annulée |
+| **Programmée** | Livraison prévue à une date précise. | Acceptée, En livraison, Annulée |
+| **À rappeler** | Le client a demandé à être rappelé. | Acceptée, En livraison, Annulée |
+| **Injoignable** | Le client ne répond pas. | Acceptée, Programmée, Annulée |
+| **En livraison** | Le colis est parti avec un livreur. | Livrée, À rappeler, Injoignable, Annulée |
+| **Livrée** | Le client a reçu et payé. | En attente (pour corriger une erreur) |
+| **Annulée** | La commande ne se fera pas. | En attente (pour la relancer) |
+| **Retournée** | Le colis est revenu. | — |
+
+Votre client voit une version simplifiée de ces étapes. Voir [Après la commande](/boutique/clients/apres-commande).
+
+## Traiter une commande
+
+<Steps>
+  <Step title="Ouvrez la commande">
+    Cliquez sur la commande. Vous voyez le client, l'adresse de livraison, les articles, le total, et, en bas, le **Bénéfice estimé** si vous avez renseigné le prix de revient de vos produits.
+
+    <Frame caption="Le détail d'une commande.">
+      <img src="/images/application/commandes/02-detail.png" alt="Détail de la commande numéro 7, en attente, avec le paiement par transfert, les articles, le client et l'adresse de livraison." />
+    </Frame>
+  </Step>
+  <Step title="Confirmez avec le client">
+    Appelez-le ou écrivez-lui sur WhatsApp. Puis cliquez sur **Changer statut** et choisissez **Acceptée**. Le menu ne propose que les statuts possibles.
+
+    <Frame caption="« Changer statut » propose seulement les étapes possibles.">
+      <img src="/images/application/commandes/03-changer-statut.png" alt="Menu Changer statut ouvert sur une commande en attente, avec les choix Acceptée et Annulée." />
+    </Frame>
+  </Step>
+  <Step title="Assignez un livreur">
+    **Changer statut** → **En livraison** ouvre la fenêtre **Assigner un livreur** : choisissez le **Livreur**, vérifiez les **Frais de livraison**, la **Ville** et les **Détails adresse**, puis cliquez sur **Confirmer**. Le client a négocié un prix ? Indiquez-le dans **Total négocié**.
+
+    <Frame caption="La fenêtre « Assigner un livreur ».">
+      <img src="/images/application/commandes/04-assigner-livreur.png" alt="Fenêtre Assigner un livreur avec le choix du livreur, les frais de livraison, la ville, l'adresse, la note client et la négociation." />
+    </Frame>
+  </Step>
+  <Step title="Clôturez">
+    À la livraison, passez la commande à **Livrée**. Elle entre alors dans votre chiffre d'affaires.
+  </Step>
+</Steps>
+
+<Warning>
+  Une commande **Livrée**, **Annulée** ou **Retournée** ne se modifie plus : ni ses articles, ni son client. Vérifiez avant de clôturer.
+</Warning>
+
+Autres actions sur une commande :
+- **Modifier les articles** (le crayon de la carte **Articles**) : ajouter, retirer, changer une quantité ;
+- **Modifier le client** ;
+- **Télécharger facture**.
+
+Si vous avez activé le **Suivi de commande**, votre client est prévenu à chaque changement de statut. Voir [Notifications WhatsApp](/connecter/notifications-whatsapp).
+
+## Paiement par transfert
+
+Quand un client choisit **Payer par transfert** (Mobile Money ou virement), la commande porte un panneau **Paiement par transfert**. Dans la liste, elle porte le badge **Virement attendu**, puis **Paiement à vérifier**.
+
+| État du panneau | Ce que ça veut dire |
+|---|---|
+| **Virement attendu** | Le client n'a pas encore envoyé sa capture. Attendez, ou relancez-le sur WhatsApp. |
+| **Capture à vérifier** | Le client a envoyé sa capture : à vous de vérifier. |
+| **Paiement validé** | Vous avez confirmé l'arrivée de l'argent. |
+| **Paiement refusé** | Vous avez refusé la capture. |
+
+<Steps>
+  <Step title="Regardez la capture">
+    Le panneau affiche le **Montant attendu** et la **Capture envoyée par le client**, avec sa date. **Agrandir** l'ouvre en grand. **Instructions montrées au client** rappelle ce que vous lui avez demandé.
+
+    <Tabs>
+      <Tab title="Ordinateur">
+        <Frame caption="Une capture de transfert à vérifier.">
+          <img src="/images/application/commandes/05-paiement-transfert.png" alt="Panneau Paiement par transfert avec le montant attendu, la capture envoyée par le client et les boutons Valider le paiement et Refuser." />
+        </Frame>
+      </Tab>
+      <Tab title="Téléphone">
+        <Frame caption="Le même panneau sur téléphone.">
+          <img src="/images/application/commandes/05-paiement-transfert-mobile.png" alt="Panneau Paiement par transfert sur téléphone avec la capture, Valider le paiement et Refuser." style={{ maxWidth: "320px", margin: "0 auto" }} />
+        </Frame>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Vérifiez sur votre compte">
+    Ouvrez votre application Mobile Money ou bancaire et vérifiez que **le montant attendu est bien arrivé**, avec la bonne référence.
+  </Step>
+  <Step title="Validez ou refusez">
+    - **Valider le paiement** : l'argent est là. La commande est payée ; préparez-la.
+    - **Refuser** : l'argent n'est pas arrivé. Woura demande confirmation : « Refuser ce paiement ? Le client devra refaire le transfert. »
+
+    Le panneau garde la trace : « Validé par … le … » ou « Refusé par … le … ».
+  </Step>
+</Steps>
+
+<Warning>
+  **Ne validez jamais sur la seule foi de la capture.** Une capture d'écran se fabrique facilement. Validez seulement quand vous voyez l'argent sur votre propre compte. Une validation ne s'annule pas.
+</Warning>
+
+Valider ou refuser un paiement ne change pas le statut de livraison : continuez à faire avancer la commande comme d'habitude.
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="Je ne vois pas une commande.">
+    Vérifiez d'abord la **boutique active**, en haut du menu. Pour une boutique Shopify, WooCommerce ou YouCan, lancez **Actualiser**. Voir [Résoudre un problème](/aide/resoudre-un-probleme).
+  </Accordion>
+  <Accordion title="Une commande porte le badge « Non gérable ».">
+    Ses actions sont bloquées. C'est le cas quand la boutique est désactivée par votre plan (vous avez plus de boutiques que votre plan n'en permet). Choisissez vos boutiques actives ou passez à un plan supérieur, dans **Abonnement et crédits**.
+  </Accordion>
+  <Accordion title="J'ai passé une commande en Livrée par erreur.">
+    Choisissez **En attente** dans **Changer statut**, puis refaites le bon parcours.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Livreurs et centre d'appels" icon="bike" href="/application/livreurs-et-agents">
+    Ajouter vos livreurs et vos agents.
+  </Card>
+  <Card title="Service après-vente" icon="headphones" href="/application/sav">
+    Suivre les clients après la livraison.
+  </Card>
+</CardGroup>

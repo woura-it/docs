@@ -1,0 +1,83 @@
+---
+title: "Résoudre un problème"
+description: "Les problèmes les plus fréquents : leur cause probable, et quoi faire."
+icon: "wrench"
+---
+
+Chaque problème suit le même plan : ce que vous constatez, la cause la plus probable, la solution. Commencez toujours par la première cause de la liste.
+
+<AccordionGroup>
+  <Accordion title="Je ne reçois pas mes commandes">
+    | Cause probable | Solution |
+    |---|---|
+    | Une autre boutique est **active**. | Vérifiez le nom en haut du menu, et changez de boutique. Voir [Gérer plusieurs boutiques](/connecter/plusieurs-boutiques). |
+    | Commandes passées **avant** la connexion de la boutique (WooCommerce, Shopify, YouCan). | Elles ne sont pas importées toutes seules : **Commandes** → **Actualiser**, avec une **Profondeur (jours)** suffisante. |
+    | Changement de statut fait dans YouCan. | Il ne remonte pas tout seul : lancez **Actualiser**. |
+    | La boutique Woura n'est pas publiée, ou est en pause. | Éditeur de boutique → **Publier**. Voir [Prévisualiser et publier](/boutique/publier). |
+    | Le formulaire de commande n'a aucun champ actif. | Éditeur → **COD & Livraison** → **Formulaire**. |
+
+    Recevoir des commandes ne coûte aucun crédit : un solde à zéro n'empêche pas les commandes d'arriver.
+  </Accordion>
+  <Accordion title="Ma connexion Shopify échoue">
+    - « Code invalide ou boutique déjà liée à un compte. » : recopiez le **Code unique** avec le bouton **Copier** de l'application **Woura Africa**. Si la boutique est déjà liée à un autre compte, contactez le support.
+    - « Limite de boutiques atteinte pour votre abonnement. » : passez à un plan supérieur.
+    - **Lien invalide** : relancez l'ouverture depuis l'application **Woura Africa** dans Shopify.
+
+    Voir [Connecter une boutique Shopify](/connecter/shopify).
+  </Accordion>
+  <Accordion title="Ma connexion WooCommerce échoue">
+    « Impossible de se connecter à WooCommerce… » : vérifiez l'URL complète en `https://`, les deux clés (en entier, au bon endroit), les droits **Lecture/Écriture** et les permaliens WordPress. Voir [Connecter une boutique WooCommerce](/connecter/woocommerce).
+  </Accordion>
+  <Accordion title="Ma connexion YouCan échoue">
+    Lisez le message affiché au retour : autorisation refusée, lien expiré, limite de boutiques, YouCan indisponible. Cliquez sur **Relancer la connexion**. Voir [Connecter une boutique YouCan](/connecter/youcan).
+  </Accordion>
+  <Accordion title="Mon numéro WhatsApp ne se connecte pas">
+    - Connectez-vous à Facebook avec le compte **administrateur** de votre Business Manager.
+    - Acceptez **toutes** les autorisations demandées par Meta, jusqu'au bout.
+    - Si Meta a créé le compte WhatsApp Business sans numéro, relancez et ajoutez votre numéro.
+    - Gardez la ligne **Détail pour le support** si vous contactez le support.
+
+    Voir [Relier votre numéro WhatsApp](/connecter/whatsapp-relier).
+  </Accordion>
+  <Accordion title="Je ne reçois pas mes alertes WhatsApp">
+    La cause la plus fréquente : la **fenêtre de 24 heures** est fermée. Écrivez au numéro WhatsApp de Woura, ou répondez au message du matin. Vérifiez aussi le **Numéro WhatsApp** et les alertes cochées dans **Paramètres** → **Notifications**. Voir [La fenêtre de 24 heures](/connecter/fenetre-24-heures).
+  </Accordion>
+  <Accordion title="Mes clients ne reçoivent pas la confirmation WhatsApp">
+    - **Notification WhatsApp client** est-elle activée (éditeur → **COD & Livraison** → **Messages**) ?
+    - Le modèle est-il validé ? Si Woura affiche « Modèle en attente de validation Meta », aucun message ne part encore.
+    - La confirmation ne part qu'en mode de paiement **À la livraison uniquement**.
+    - Vous reste-t-il des crédits ?
+    - Le client a-t-il donné un numéro WhatsApp valide ?
+  </Accordion>
+  <Accordion title="Mon domaine personnalisé ne s'affiche pas">
+    | Message ou symptôme | Solution |
+    |---|---|
+    | « Aucun CNAME vers … trouvé » | L'enregistrement n'existe pas encore, ou il a une faute. Vérifiez Type `CNAME`, Nom et Cible `shops.woura.shop`. |
+    | Domaine racine refusé (`monsite.com`) | Utilisez `www.monsite.com` ou `boutique.monsite.com`. |
+    | « Le DNS de ce domaine ne répond pas » | Attendez la propagation (jusqu'à 24 heures), puis relancez **Vérifier le DNS**. |
+    | Vérifié, mais la boutique ne s'ouvre pas | Comptez une dizaine de minutes pour le certificat HTTPS. Sur Cloudflare, mettez le nuage en gris (« DNS uniquement »). Passé une heure, contactez le support. |
+
+    Voir [Paramètres : domaine personnalisé](/boutique/parametres).
+  </Accordion>
+  <Accordion title="Un client dit avoir payé par transfert">
+    1. Ouvrez la commande : le panneau **Paiement par transfert** montre le **Montant attendu** et la capture, s'il l'a envoyée.
+    2. Ouvrez **votre** application Mobile Money ou bancaire, et cherchez le paiement.
+    3. Vous le voyez ? **Valider le paiement**. Vous ne le voyez pas ? Attendez un peu, puis **Refuser** si rien n'arrive.
+
+    Ne validez jamais sur la seule capture : elle se falsifie facilement. Voir [Commandes : paiement par transfert](/application/commandes#paiement-par-transfert).
+  </Accordion>
+  <Accordion title="Un client ne trouve pas sa commande sur « Suivre ma commande »">
+    Il doit saisir le numéro qui commence par `WS-` (sur sa page de confirmation) et **le même téléphone** que celui donné à la commande. Après plusieurs essais ratés, la page lui demande de patienter quelques minutes.
+  </Accordion>
+  <Accordion title="Le tableau de bord charge sans fin">
+    1. Rechargez la page.
+    2. Vérifiez votre connexion Internet.
+    3. Déconnectez-vous, puis reconnectez-vous.
+    4. Si rien ne change, [contactez le support](/aide/contacter-le-support) en précisant l'heure et votre navigateur.
+  </Accordion>
+  <Accordion title="Je n'ai plus de crédits">
+    Vos commandes, vos livreurs et votre tableau de bord continuent de fonctionner. Seuls les services payants s'arrêtent : messages WhatsApp, assistant, IA. Achetez des crédits dans **Abonnement et crédits**. Voir [Crédits et abonnement](/demarrer/credits-et-abonnement).
+  </Accordion>
+</AccordionGroup>
+
+Toujours bloqué ? [Contactez le support](/aide/contacter-le-support).

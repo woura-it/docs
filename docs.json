@@ -151,6 +151,73 @@
                 ]
               }
             ]
+          },
+          {
+            "tab": "Application",
+            "icon": "layout-dashboard",
+            "groups": [
+              {
+                "group": "Au quotidien",
+                "pages": [
+                  "application/tableau-de-bord",
+                  "application/commandes",
+                  "application/produits",
+                  "application/clients",
+                  "application/sav"
+                ]
+              },
+              {
+                "group": "Livrer",
+                "pages": [
+                  "application/livreurs-et-agents"
+                ]
+              },
+              {
+                "group": "Argent et chiffres",
+                "pages": [
+                  "application/chiffres",
+                  "application/depenses",
+                  "application/audience"
+                ]
+              },
+              {
+                "group": "Outils et réglages",
+                "pages": [
+                  "application/outils-ia",
+                  "application/notifications",
+                  "application/parametres",
+                  "application/compte"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Abonnement",
+            "icon": "credit-card",
+            "groups": [
+              {
+                "group": "Abonnement et paiements",
+                "pages": [
+                  "abonnement/plans-et-credits",
+                  "abonnement/historique",
+                  "abonnement/affiliation"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Aide",
+            "icon": "life-buoy",
+            "groups": [
+              {
+                "group": "Aide",
+                "pages": [
+                  "aide/questions-frequentes",
+                  "aide/resoudre-un-probleme",
+                  "aide/contacter-le-support"
+                ]
+              }
+            ]
           }
         ]
       }
