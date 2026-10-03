@@ -32,7 +32,7 @@
 | Succès Shopify | « Boutique Shopify connectée ! » | — | oui |
 | WooCommerce | « URL de la boutique », « Consumer Key », « Consumer Secret », « Connecter la boutique » | Produits importés à la connexion ; commandes antérieures **non** importées (il faut synchroniser). Erreur « Impossible de se connecter à WooCommerce: … ». | oui |
 | YouCan | « Connecter avec YouCan » | Produits importés à la connexion ; seules les nouvelles commandes arrivent ; retours d'erreur : « Autorisation refusée », « La connexion a expiré », « Limite de boutiques atteinte », « YouCan n'a pas confirmé la connexion ». | oui |
-| Boutique WhatsApp | option « Boutique WhatsApp » → `/whatsapp-shop` | — | oui |
+| ~~Boutique WhatsApp~~ | Retirée le 03/10/2026 : plus de création de boutique WhatsApp ; l'assistant se relie à une boutique existante | — | retiré |
 | Boutique Woura | option « Boutique Woura » → ouvre le builder dans un nouvel onglet | Seulement avec `WOURA_PUBLIC_STOREFRONT`. | ? (Q1) |
 | Autres boutiques | « Utiliser cette boutique », « Réactiver », « Prolonger », « Convertir en vitrine Woura » → « Confirmer la conversion » | « Convertir » n'apparaît que pour une boutique non Woura **et non active**. | oui |
 | Synchro commandes (`/orders`) | « Actualiser » → fenêtre « Synchronisation », « Profondeur (jours) » (1–365, 14 par défaut), « Lancer la synchronisation » | Proposée pour toutes les plateformes sauf WhatsApp. | oui |
@@ -44,7 +44,7 @@
 
 | Route | Libellé exact | Règle métier | Doc ? |
 |---|---|---|---|
-| `/whatsapp-shop` | « Créer une boutique WhatsApp » ; étapes « Informations / Connexion / Vérification / Tester » ; nom du chatbot (défaut « Sarah ») | Connexion Meta Embedded : admin du Business Manager, toutes les autorisations ; le marchand garde WhatsApp sur son téléphone. | oui |
+| `/whatsapp-shop` | Redirige vers l'assistant de la boutique active (création de boutique WhatsApp retirée le 03/10/2026) ; liaison : « Connecter WhatsApp Business », nom du chatbot (défaut « Sarah ») | Connexion Meta Embedded : admin du Business Manager, toutes les autorisations ; le marchand garde WhatsApp sur son téléphone. | oui |
 | Mode OTP (BSP) | « Meta BSP (OTP) » | Drapeau `WHATSAPP_BSP` (100 % en dev). | ? (Q3) |
 | `/whatsapp-shop/{id}` | « Assistant WhatsApp » (« Bêta ») ; onglets « Discussions », « Essayer », « Réglages », « Catalogue » ; « Mettre en ligne » / « Mettre hors ligne » | Menu derrière `AI_ASSISTANT` (pilote liste blanche en dev). Réponse : 2 crédits dans la fenêtre 24 h, 4 hors fenêtre. | ? (Q2) |
 | Catalogue WhatsApp | « Relier votre catalogue WhatsApp », « Envoyer N produits » | Numéros Meta seulement ; produits sans photo non envoyés. | ? (Q2) |
