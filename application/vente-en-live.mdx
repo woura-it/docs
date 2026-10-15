@@ -56,7 +56,7 @@ En haut de l'écran, trois compteurs se mettent à jour pendant le live : les **
 ## Ce que voit votre client
 
 - Il écrit « le 3 ». Si le produit a plusieurs tailles ou couleurs, l'assistant lui demande laquelle. Il ne choisit **jamais** à sa place.
-- L'assistant ne propose que ce qui est en stock. Si le client en veut plus qu'il n'en reste, il le lui dit.
+- L'assistant ne propose que ce qui est en stock, déduction faite des pièces retenues par les commandes du live encore en attente, y compris celles d'un live précédent. Si le client en veut plus qu'il n'en reste, il le lui dit.
 - Le client reçoit un récapitulatif avec les numéros, les tailles et le total. Il répond **oui** pour commander.
 - Le stock est vérifié une dernière fois au **oui** : si une pièce vient de partir, le récapitulatif est corrigé avant toute commande.
 - Il paie comme pour toute commande WhatsApp : à la livraison, ou en ligne si vous l'avez activé.
@@ -79,7 +79,12 @@ Le **Bilan du live** montre les demandes, les commandes, ce qui est **Encaissé*
 
 <AccordionGroup>
   <Accordion title="Deux clients veulent la dernière pièce : que se passe-t-il ?">
-    L'assistant vérifie le stock à chaque demande et au moment du **oui**. Mais une commande en attente ne réserve pas la pièce : si deux clients confirment presque en même temps, vous pouvez recevoir deux commandes pour la dernière pièce. C'est vous qui tranchez en acceptant l'une et en prévenant l'autre.
+    Pendant le live, le premier qui répond **oui** l'obtient : sa commande, même en attente, réserve la pièce. Le client suivant entend que le produit est épuisé. Si vous annulez une commande du live, ses pièces redeviennent disponibles pour les autres clients.
+
+    Cette réservation ne vaut que pour le live : votre boutique en ligne, et l'assistant en dehors d'un live, peuvent encore vendre une pièce réservée. Gardez un œil sur le stock des produits que vous présentez en live.
+  </Accordion>
+  <Accordion title="Pourquoi un produit est-il « épuisé » alors qu'il me reste du stock ?">
+    Les commandes du live en attente réservent leurs pièces tant que vous ne les avez pas acceptées ou annulées. L'écran du live indique combien de pièces sont réservées. Traitez ces commandes : une commande acceptée reste comptée, une commande annulée libère ses pièces.
   </Accordion>
   <Accordion title="Un client écrit un numéro qui n'existe pas.">
     L'assistant lui répond qu'il ne trouve pas ce numéro et lui renvoie la liste du live.
