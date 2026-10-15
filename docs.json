@@ -167,6 +167,12 @@
                 ]
               },
               {
+                "group": "Vendre en live",
+                "pages": [
+                  "application/vente-en-live"
+                ]
+              },
+              {
                 "group": "Livrer",
                 "pages": [
                   "application/livreurs-et-agents"
