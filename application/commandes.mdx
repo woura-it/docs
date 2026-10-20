@@ -82,7 +82,8 @@ Votre client voit une version simplifiée de ces étapes. Voir [Après la comman
 
 Autres actions sur une commande :
 - **Modifier les articles** (le crayon de la carte **Articles**) : ajouter, retirer, changer une quantité ;
-- **Modifier le client** ;
+- **Modifier le client** : un nom ou un pseudo suffit. Vous ajoutez le numéro d'un client qui n'en avait pas (une commande saisie pendant un live) et c'est celui d'un client que vous connaissez déjà ? La commande rejoint sa fiche ; Woura vous le dit et le note dans l'historique ;
+- **Envoyer la confirmation WhatsApp** (carte **Client**) : un aperçu vous montre ce qui partira — le message complet si le client vous a écrit dans les dernières 24 heures, sinon le message type de WhatsApp (sans vos instructions de paiement), ou rien et pourquoi (pas de numéro, client désabonné). Cochez **Demander le paiement par transfert** pour y joindre vos instructions : la capture que le client vous renverra s'ajoutera à la commande ;
 - **Télécharger facture**.
 
 Si vous avez activé le **Suivi de commande**, votre client est prévenu à chaque changement de statut. Voir [Notifications WhatsApp](/connecter/notifications-whatsapp).
@@ -96,7 +97,10 @@ Quand un client choisit **Payer par transfert** (Mobile Money ou virement), la c
 | **Virement attendu** | Le client n'a pas encore envoyé sa capture. Attendez, ou relancez-le sur WhatsApp. |
 | **Capture à vérifier** | Le client a envoyé sa capture : à vous de vérifier. |
 | **Paiement validé** | Vous avez confirmé l'arrivée de l'argent. |
+| **Acompte reçu** | Vous avez validé un montant plus petit que le total : le livreur réclamera le reste. |
 | **Paiement refusé** | Vous avez refusé la capture. |
+
+Le client vous a envoyé sa capture ailleurs (votre WhatsApp personnel, Messenger) ? **Joindre la capture du client** l'ajoute à la commande, y compris sur une commande saisie à la main qui n'a pas encore de paiement par transfert. Elle passe alors **Capture à vérifier** : vous la validez comme les autres.
 
 <Steps>
   <Step title="Regardez la capture">
@@ -119,6 +123,7 @@ Quand un client choisit **Payer par transfert** (Mobile Money ou virement), la c
     Ouvrez votre application Mobile Money ou bancaire et vérifiez que **le montant attendu est bien arrivé**, avec la bonne référence.
   </Step>
   <Step title="Validez ou refusez">
+    - **Montant reçu** est prérempli avec le montant attendu. Le client n'a envoyé qu'une partie ? Saisissez ce que vous avez reçu (par exemple `5 000`) : le bouton devient **Enregistrer un acompte de 5 000 F CFA**, et le livreur ne réclamera que le reste.
     - **Valider le paiement** : l'argent est là. La commande est payée ; préparez-la.
     - **Refuser** : l'argent n'est pas arrivé. Woura demande confirmation : « Refuser ce paiement ? Le client devra refaire le transfert. »
 
