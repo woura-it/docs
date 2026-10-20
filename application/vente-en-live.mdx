@@ -36,6 +36,8 @@ Woura vérifie tout cela au moment de démarrer. S'il manque quelque chose, le b
   </Step>
   <Step title="Démarrez">
     Cliquez sur **Démarrer le live** juste avant de lancer votre live.
+
+    Si vos clients ne sont pas encore prévenus de l'avancement de leur commande, la case **Prévenir mes clients sur WhatsApp à chaque étape de leur commande** est cochée : en démarrant, vous activez le [suivi de commande](/connecter/notifications-whatsapp) pour toute votre boutique (chaque message coûte des crédits, le montant est indiqué). Décochez-la si vous ne le voulez pas ; vous pourrez changer d'avis dans **Paramètres**.
   </Step>
 </Steps>
 
@@ -53,13 +55,26 @@ Un produit oublié ? **Ajouter un produit** lui donne le numéro suivant. **Reti
 
 En haut de l'écran, trois compteurs se mettent à jour pendant le live : les **Demandes**, les **Commandes** et l'**Encaissé**.
 
+### Saisir une commande à la main
+
+Un client commande dans les commentaires TikTok ou Facebook sans écrire sur WhatsApp ? Saisissez sa commande vous-même, sans quitter l'écran du live :
+
+1. Touchez **Nouvelle commande**.
+2. Touchez le numéro annoncé, puis la taille. Chaque taille affiche ce qui reste, pièces réservées déduites ; une taille épuisée ne se choisit pas.
+3. Écrivez le **nom ou le pseudo** du client (celui du commentaire suffit). Le **téléphone** est facultatif : vous l'ajouterez plus tard.
+4. Touchez **Créer la commande**.
+
+La commande est **en attente** et rattachée au live : elle réserve sa pièce, apparaît dans les commandes du live et dans les compteurs. Si la dernière pièce vient de partir, Woura refuse la commande et dit pourquoi : rien n'est créé. Un double appui ne crée jamais deux commandes.
+
+Après le live, ouvrez chaque commande saisie pour **ajouter le numéro du client** (**Modifier le client**), puis **Envoyer la confirmation WhatsApp** et encaisser son dépôt : voir [Vos commandes](/application/commandes#paiement-par-transfert).
+
 ## Ce que voit votre client
 
 - Il écrit « le 3 ». Si le produit a plusieurs tailles ou couleurs, l'assistant lui demande laquelle. Il ne choisit **jamais** à sa place.
 - L'assistant ne propose que ce qui est en stock, déduction faite des pièces retenues par les commandes du live encore en attente, y compris celles d'un live précédent. Si le client en veut plus qu'il n'en reste, il le lui dit.
 - Le client reçoit un récapitulatif avec les numéros, les tailles et le total. Il répond **oui** pour commander.
 - Le stock est vérifié une dernière fois au **oui** : si une pièce vient de partir, le récapitulatif est corrigé avant toute commande.
-- Il paie comme pour toute commande WhatsApp : à la livraison, ou en ligne si vous l'avez activé.
+- Il paie comme pour toute commande WhatsApp : à la livraison, en ligne si vous l'avez activé, ou par dépôt Mobile Money : il envoie la capture, et **vous** la validez après avoir vu l'argent arriver. Un dépôt plus petit que le total est un **acompte** : le livreur ne réclamera que le reste.
 
 <Warning>
   Un client qui dit « j'ai payé » ou envoie une capture n'a pas forcément payé. Une commande n'est marquée payée qu'après vérification du paiement en ligne, ou quand **vous** validez la preuve de transfert. Vérifiez toujours avant d'expédier.
@@ -85,6 +100,9 @@ Le **Bilan du live** montre les demandes, les commandes, ce qui est **Encaissé*
   </Accordion>
   <Accordion title="Pourquoi un produit est-il « épuisé » alors qu'il me reste du stock ?">
     Les commandes du live en attente réservent leurs pièces tant que vous ne les avez pas acceptées ou annulées. L'écran du live indique combien de pièces sont réservées. Traitez ces commandes : une commande acceptée reste comptée, une commande annulée libère ses pièces.
+  </Accordion>
+  <Accordion title="Un client commande en commentaire, sans écrire sur WhatsApp.">
+    Touchez **Nouvelle commande** sur l'écran du live et saisissez-la avec son pseudo : voir [Saisir une commande à la main](#saisir-une-commande-a-la-main). Ajoutez son numéro dès que vous l'avez ; si ce numéro est déjà celui d'un de vos clients, la commande rejoint sa fiche au lieu d'en créer une seconde.
   </Accordion>
   <Accordion title="Un client écrit un numéro qui n'existe pas.">
     L'assistant lui répond qu'il ne trouve pas ce numéro et lui renvoie la liste du live.
