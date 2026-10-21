@@ -58,11 +58,12 @@ L'application Shopify s'appelle **« Woura Africa »** (dépôt `woura-africa/`)
 Ne pas documenter :
 - le back-office staff (`/backoffice`, admin Django) ;
 - les espaces livreur (`/delivery/dashboard`) et centre d'appels (`/callcenter`) — seulement comment le marchand **invite** et **assigne** ;
-- les menus masqués : Approvisionnement, Idées produits (« Veille marché »), Script et voix off (et l'onglet « Script audio » des fiches IA) ;
-- Publicités Facebook (App Review Meta en cours) ;
-- Approvisionnement et Publicités Facebook ont pourtant une carte dans **Toutes les fonctionnalités** (et Publicités Facebook peut devenir un raccourci) : ne pas les citer dans les listes de cartes ou de raccourcis tant que l'utilisateur n'a pas tranché ;
-- l'assistant « Wou », la « Boutique indépendante », la connexion WhatsApp par QR code ;
+- Script et voix off (et l'onglet « Script audio » des fiches IA) ;
+- l'onglet « Prix d'import » de **Mon compte** et les anciennes fiches « Idées produits » (`/listed-products/<id>`), restes de l'ancienne fonction, à trancher par l'utilisateur ;
+- la « Boutique indépendante », la connexion WhatsApp par QR code ;
 - les noms de variables d'environnement, URL internes, détails d'architecture.
+
+Décision du 21/10/2026 : **Approvisionnement**, **Publicités Facebook**, **Veille marché** et **Wou** sont documentés (`application/approvisionnement`, `application/publicites-facebook`, `application/veille-marche`, `connecter/wou`). Ce qui dépend d'un drapeau s'écrit « si la fonction est ouverte pour votre compte », sans nommer le drapeau ; pour Publicités Facebook, la connexion dépend d'une validation de Meta : le dire sobrement.
 
 Ce que l'interface n'offre pas (déconnecter une boutique ou un numéro WhatsApp, zones de livraison WhatsApp) : écrire « contactez le support ».
 
