@@ -103,6 +103,7 @@
                   "connecter/catalogue-whatsapp",
                   "connecter/campagnes-whatsapp",
                   "connecter/notifications-whatsapp",
+                  "connecter/wou",
                   "connecter/fenetre-24-heures"
                 ]
               }
@@ -168,6 +169,7 @@
                 "pages": [
                   "application/commandes",
                   "application/produits",
+                  "application/approvisionnement",
                   "application/clients",
                   "application/sav"
                 ]
@@ -193,9 +195,16 @@
                 ]
               },
               {
-                "group": "Outils et réglages",
+                "group": "Marketing et automatisation",
                 "pages": [
                   "application/fiches-produits-ia",
+                  "application/publicites-facebook",
+                  "application/veille-marche"
+                ]
+              },
+              {
+                "group": "Réglages",
+                "pages": [
                   "application/notifications",
                   "application/parametres",
                   "application/compte"

@@ -1,0 +1,110 @@
+---
+title: "Approvisionnement"
+description: "Notez vos achats de marchandise chez vos fournisseurs. À la réception, Woura ajoute le stock et la dépense en une seule fois."
+icon: "warehouse"
+---
+
+Quand vous commandez de la marchandise à un fournisseur, notez-la dans **Approvisionnement**. Vous suivez ainsi ce qui est en route. Le jour où le colis arrive, vous le validez : Woura ajoute les pièces à votre stock et enregistre la dépense, sans double saisie.
+
+<Info>
+  Le produit doit déjà exister dans **Produits**. Noter un approvisionnement ne coûte aucun crédit.
+</Info>
+
+## Ouvrir Approvisionnement
+
+- **Toutes les fonctionnalités**, rubrique **Livraison et opérations**, carte **Approvisionnement**. Sur téléphone : **Plus**, même rubrique.
+- Ou, depuis la fiche d'un produit, le lien **Approvisionner ce produit** : la liste s'ouvre, filtrée sur ce produit.
+
+L'approvisionnement fait partie du suivi du stock : dans le menu, c'est **Produits** qui reste en surbrillance.
+
+{/* capture à refaire : images/application/approvisionnement/01-liste.png */}
+
+## Avant de commencer
+
+Préparez :
+- la **photo du colis** ;
+- le **bon de livraison** du fournisseur, en PDF ou en image.
+
+Les deux sont obligatoires pour créer un approvisionnement.
+
+## Noter un approvisionnement
+
+<Steps>
+  <Step title="Ouvrez le formulaire">
+    Cliquez sur **Nouvel Approvisionnement**.
+  </Step>
+  <Step title="Décrivez l'achat">
+    - **Produit** : choisissez-le dans la liste.
+    - **Quantité** et **Prix Unitaire** : ce que vous avez acheté, et à quel prix la pièce.
+    - **Date de commande** et **Date d'expédition**. **Date de livraison (Estimée)** est facultative.
+    - **Frais de Livraison** et **Autres Frais** : mettez `0` s'il n'y en a pas.
+  </Step>
+  <Step title="Vérifiez les montants">
+    Woura calcule le **Montant Total** : quantité × prix unitaire, plus les frais. Corrigez-le si votre facture dit autre chose.
+
+    Indiquez le **Poids Total (kg)**. Woura en déduit le **Prix de revient / kg** : le montant total divisé par le poids.
+  </Step>
+  <Step title="Joignez les documents et créez">
+    Ajoutez le **Bon de livraison (PDF/Image)** et la **Photo du colis**, puis cliquez sur **Créer**. L'approvisionnement apparaît dans la liste avec le statut **En attente**.
+
+    {/* capture à refaire : images/application/approvisionnement/02-nouvel-approvisionnement.png */}
+  </Step>
+</Steps>
+
+Tant qu'il est **En attente**, l'approvisionnement ne change ni votre stock ni vos dépenses.
+
+## À la réception : valider
+
+<Steps>
+  <Step title="Ouvrez les actions">
+    Sur la carte de l'approvisionnement, cliquez sur le bouton **…**, puis sur **Valider**.
+  </Step>
+  <Step title="Confirmez">
+    La fenêtre **Valider l'approvisionnement** rappelle la quantité et le coût : « En validant, une dépense sera automatiquement créée et la quantité en stock du produit sera mise à jour. » Cliquez sur **Valider**.
+
+    {/* capture à refaire : images/application/approvisionnement/03-valider.png */}
+  </Step>
+</Steps>
+
+L'approvisionnement passe **Validé**. Woura :
+- ajoute la quantité au stock du produit ;
+- crée une dépense de type **Approvisionnement**, du montant total, à la date de commande. Vous la retrouvez dans [Dépenses](/application/depenses) et dans votre **Bénéfice net**.
+
+<Warning>
+  Une validation ne s'annule pas, et un approvisionnement validé ne se modifie plus. Ne notez pas cette dépense une seconde fois à la main dans **Dépenses** : elle serait comptée deux fois.
+</Warning>
+
+## Si la marchandise n'arrive pas
+
+Bouton **…** de l'approvisionnement, puis **Annuler**, et **Confirmer l'annulation**. Il passe **Annulé** : ni stock ni dépense.
+
+## Retrouver un approvisionnement
+
+- **Rechercher...** et **Filtrer par produit** trient la liste.
+- **Voir détails** affiche le montant total, le poids, le prix de revient, les frais, les dates et les documents joints.
+- **Modifier** sert seulement tant que l'approvisionnement est **En attente**.
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="Le prix de revient de mon produit change-t-il à la validation ?">
+    Non. La validation ajoute le stock et la dépense, mais ne touche pas au **Prix de revient** du produit. S'il a changé, mettez-le à jour vous-même dans la fiche du produit. Voir [Produits et stock](/application/produits).
+  </Accordion>
+  <Accordion title="Woura refuse de modifier mon approvisionnement.">
+    Il est déjà **Validé** ou **Annulé**. Le bouton **Modifier** reste affiché, mais Woura répond : « Impossible de modifier un approvisionnement déjà validé ou annulé. »
+  </Accordion>
+  <Accordion title="Que se passe-t-il si je supprime un approvisionnement validé ?">
+    Sa dépense disparaît de vos **Dépenses**. Le stock ajouté, lui, reste : corrigez-le avec **Retirer du stock** dans la fiche du produit si besoin.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Produits et stock" icon="package" href="/application/produits">
+    Suivre votre stock produit par produit.
+  </Card>
+  <Card title="Dépenses" icon="banknote" href="/application/depenses">
+    Les dépenses créées par vos approvisionnements.
+  </Card>
+</CardGroup>
