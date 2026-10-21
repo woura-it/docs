@@ -231,7 +231,11 @@ Sources lues : `app` dev (2ee0a7c), `hooks/use-menu-marchand.ts` (`menuV2`, `rac
 - **Commandes** : « Toutes / Programmées » est devenu « Liste / Calendrier » ; bouton « Service après-vente » dans l'en-tête (icône seule sous 640 px).
 - **Indicateurs** : « Chiffre d'affaires / Profit » → « Encaissé / Bénéfice net » (accueil et Chiffres) ; titre « Mes Chiffres » → « Chiffres » ; « Service Après-Vente » → « Service après-vente ».
 - **Conversion en vitrine Woura** : proposée aussi sur la carte de la boutique active (la doc disait « jamais la boutique active »). D11 (retrait pour WooCommerce/YouCan, branches `fix/conversion-boutique-integree`) non fusionné : la section sera à revoir.
-- **Livreurs** : la doc décrit encore « Copier le lien d'accès » ; selon l'utilisateur (07/10), livreurs et agents reçoivent leurs accès par e-mail et utilisent l'app Woura Agent. Non vérifié dans le code, non modifié.
+- **Accès des livreurs et agents (corrigé dans la doc le 21/10)** : le chemin est l'app mobile Woura Agent, accès par e-mail.
+  - Créer un livreur (`POST /delivery-man/`) ou un agent ne lui envoie **aucun identifiant** : mot de passe aléatoire non transmis, seule la notification générique « Bienvenue sur Woura ! » part. Les accès partent avec **« Envoyer les accès à l'application »** (menu … de la carte du livreur, ou de l'agent dans « Mes agents ») → `send-app-access` : nouveau mot de passe, e-mail toujours (si adresse), WhatsApp seulement si la fenêtre de 24 h est ouverte, liens Play Store / App Store de `GlobalSettings`.
+  - Action visible seulement pour un livreur TERTIARY (« Personnel ») ou un call center PRIVÉ, et seulement si au moins un lien de store est renseigné.
+  - Le bouton **« Copier le lien d'accès »** existe encore sur la fiche d'un livreur non PRIMARY (`delivery-men/[slug]/page.tsx`, `generate_access_link`) ; il mène au tableau de bord web livreur, qui affiche une fenêtre poussant l'app. La doc ne le décrit plus. Aucun bouton équivalent côté agents.
+  - Nom de l'app incohérent : « Woura Agent » sur iPhone (`CFBundleDisplayName`), « Woura Agents » sur Android (`android:label`) et dans l'app ; l'e-mail dit « l'application Woura ».
 - **Commentaire de tête de `use-menu-marchand.ts`** : décrit encore la V1 (« Vendre, Livrer, Ma boutique, Argent, Automatiser »).
 - **Copie de travail de `app`** : une modification non commitée (autre session) retire la carte « Veille marché » du catalogue.
 - **Bouton « Abonnement »** de l'en-tête : masqué sous 400 px, il passe dans le menu de l'avatar.
