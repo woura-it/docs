@@ -45,7 +45,7 @@ En cas de doute, demandez à la personne qui gère votre site.
     Besoin d'aide pour cet écran ? Consultez la [documentation WooCommerce sur l'API REST](https://woocommerce.com/document/woocommerce-rest-api/).
   </Step>
   <Step title="Ouvrez la fenêtre WooCommerce dans Woura">
-    Menu **Ma boutique en ligne**, bouton **Ajouter une boutique**. Choisissez **Oui, j'ai déjà une boutique**, puis **Boutique WooCommerce**.
+    Ouvrez **Mes boutiques**, puis cliquez sur **Ajouter une boutique**. Choisissez **Sur mon site Shopify, WooCommerce ou YouCan**, puis **Boutique WooCommerce**. Voir [Choisir votre situation](/connecter/choisir-sa-situation) pour trouver **Mes boutiques**.
 
     <Frame caption="La fenêtre « Connecter WooCommerce ».">
       <img src="/images/connecter/woocommerce/01-formulaire.png" alt="Fenêtre Connecter WooCommerce avec le rappel des étapes, le nom de la boutique, l'URL de la boutique et les champs Consumer Key et Consumer Secret." />
@@ -55,7 +55,8 @@ En cas de doute, demandez à la personne qui gère votre site.
     - **Nom de la boutique** et, si vous voulez, un logo ;
     - **URL de la boutique** : l'adresse complète de votre site, avec `https://`, par exemple `https://votre-boutique.com` ;
     - **Consumer Key** et **Consumer Secret** : les deux clés copiées ;
-    - **Pays** et **Devise principale**.
+    - **Pays** et **Devise principale** ;
+    - **Importer aussi les commandes des 14 derniers jours** : cochée au départ. Vos commandes des deux dernières semaines arrivent dans **Commandes**, sans notification. Décochez-la si vous n'en voulez pas.
   </Step>
   <Step title="Connectez">
     Cliquez sur **Connecter la boutique**. Woura vérifie les clés auprès de votre site. Si tout va bien, le message « Boutique WooCommerce connectée avec succès ! » s'affiche, et la boutique devient votre **boutique active**.
@@ -68,10 +69,10 @@ En cas de doute, demandez à la personne qui gère votre site.
 |---|---|
 | Vos **produits** | À la connexion. Ensuite, en temps réel quand vous en créez, modifiez ou supprimez dans WooCommerce. |
 | Vos **nouvelles commandes** et leurs changements | En temps réel. |
-| Vos **commandes passées avant la connexion** | **Pas importées automatiquement.** Lancez **Actualiser** sur la page **Commandes**. |
+| Vos **commandes passées avant la connexion** | Celles des 14 derniers jours, si vous avez laissé cochée **Importer aussi les commandes des 14 derniers jours**. Pour remonter plus loin, lancez **Actualiser** sur la page **Commandes**. |
 
 <Tip>
-  Juste après la connexion, ouvrez **Commandes**, cliquez sur **Actualiser**, mettez par exemple 30 dans **Profondeur (jours)**, puis cliquez sur **Lancer la synchronisation**. Vos commandes du dernier mois arrivent dans Woura.
+  Besoin de plus de 14 jours d'historique ? Juste après la connexion, ouvrez **Commandes**, cliquez sur **Actualiser**, mettez par exemple 30 dans **Profondeur (jours)**, puis cliquez sur **Lancer la synchronisation**. Vos commandes du dernier mois arrivent dans Woura.
 </Tip>
 
 Détails : [Ce qui se synchronise](/connecter/synchronisation).
@@ -89,7 +90,7 @@ Détails : [Ce qui se synchronise](/connecter/synchronisation).
     Si le message persiste, votre hébergeur bloque peut-être l'API REST. Montrez ce message à la personne qui gère votre site.
   </Accordion>
   <Accordion title="Mes anciennes commandes n'apparaissent pas.">
-    C'est normal : les commandes passées avant la connexion ne sont pas importées toutes seules. Utilisez **Actualiser** sur la page **Commandes** (voir l'astuce plus haut).
+    Seules les commandes des 14 derniers jours sont importées à la connexion, et seulement si la case **Importer aussi les commandes des 14 derniers jours** était cochée. Pour les plus anciennes, utilisez **Actualiser** sur la page **Commandes** (voir l'astuce plus haut).
   </Accordion>
 </AccordionGroup>
 
