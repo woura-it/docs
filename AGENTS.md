@@ -25,6 +25,7 @@ L'application Shopify s'appelle **« Woura Africa »** (dépôt `woura-africa/`)
 ## Terminologie
 
 - « boutique active » : la boutique sur laquelle portent commandes, produits et chiffres.
+- Navigation (V2) : le menu a cinq entrées fixes, **Accueil** (et non « Tableau de bord »), **Commandes**, **Produits**, **Clients**, **Chiffres** ; puis **Vos raccourcis**, **Toutes les fonctionnalités**, **Paramètres**, **Centre d'aide**. Sur téléphone : barre du bas et **Plus** (plus de ☰). On écrit « dans **Toutes les fonctionnalités**, rubrique **…** », jamais « menu **Outils IA** » ni « menu **Ma boutique en ligne** » (devenu **Mes boutiques**). Toujours donner le chemin ordinateur ET téléphone. Page de référence : `application/toutes-les-fonctionnalites.mdx`.
 - « crédit » : 1 crédit = 5 F CFA. Ne jamais écrire un prix sans l'avoir vu sur la page Tarifs locale.
 - « Code unique » (Shopify), « Consumer Key » / « Consumer Secret » (WooCommerce) : libellés exacts de l'interface.
 - « paiement à la livraison » (et non « COD » seul) ; « COD & Livraison » seulement pour nommer le menu.
@@ -56,8 +57,9 @@ L'application Shopify s'appelle **« Woura Africa »** (dépôt `woura-africa/`)
 Ne pas documenter :
 - le back-office staff (`/backoffice`, admin Django) ;
 - les espaces livreur (`/delivery/dashboard`) et centre d'appels (`/callcenter`) — seulement comment le marchand **invite** et **assigne** ;
-- les menus masqués : Approvisionnement, Idées produits, Script et voix off (et l'onglet « Script audio » des fiches IA) ;
+- les menus masqués : Approvisionnement, Idées produits (« Veille marché »), Script et voix off (et l'onglet « Script audio » des fiches IA) ;
 - Publicités Facebook (App Review Meta en cours) ;
+- Approvisionnement et Publicités Facebook ont pourtant une carte dans **Toutes les fonctionnalités** (et Publicités Facebook peut devenir un raccourci) : ne pas les citer dans les listes de cartes ou de raccourcis tant que l'utilisateur n'a pas tranché ;
 - l'assistant « Wou », la « Boutique indépendante », la connexion WhatsApp par QR code ;
 - les noms de variables d'environnement, URL internes, détails d'architecture.
 
@@ -65,9 +67,9 @@ Ce que l'interface n'offre pas (déconnecter une boutique ou un numéro WhatsApp
 
 ## Sources de vérité
 
-1. Les menus : `app/components/admin/admin-sidebar.tsx`, `dashboard-storefront/components/builder/BuilderSidebar.tsx`, `storefront/components/shop/`.
+1. Les menus : `app/hooks/use-menu-marchand.ts` (`menuV2`, `raccourcis`, `rubriquesDuCatalogue` : menu, raccourcis et cartes de Toutes les fonctionnalités, lus par toutes les surfaces), `app/components/admin/feuille-plus.tsx` et `mobile-bottom-nav.tsx` (téléphone), règles des raccourcis dans `api/app/shop/signaux_navigation.py` ; `app/components/admin/admin-sidebar.tsx` n'est plus que le rendu. Éditeur : `dashboard-storefront/components/builder/BuilderSidebar.tsx`. Vitrine : `storefront/components/shop/`.
 2. Les libellés : `messages/fr.json` de `app` et de `dashboard-storefront`.
 3. Les règles : l'API Django `api/` (statuts `app/shop/statuts.py`, vitrine `app/shop/vitrine.py`, paiement `app/shop/public_views.py`, crédits `app/wallet/`).
 4. `api/app/backoffice/docs_content/*.md` pour comprendre, jamais pour copier.
 
-L'inventaire de travail est dans `_inventaire.md` (non publié).
+L'inventaire de travail est dans `_inventaire.md` (non publié). Les captures retirées ou à faire sont listées dans `_captures-a-refaire.md` (non publié) ; dans les pages, leur place est marquée par `{/* capture à refaire : images/… */}`.

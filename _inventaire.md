@@ -16,14 +16,14 @@
 | `/auth/forgot-password` | « Mot de passe oublié ? » ; « Envoyer le code de réinitialisation » | Le code arrive par e-mail, puis « Nouveau mot de passe ». | oui |
 | `/contact` | « Contactez-nous » ; « Envoyer le message » | Canal support public. | oui (page Contacter le support) |
 | `/legal/*` | CGU, Confidentialité, Cookies | — | non (renvoi seulement) |
-| Accueil d'un nouveau compte | Étape 1 « Complète ton profil » (Prénom, Nom, Numéro principal, Pays, Ville, « Accéder à mon espace ») ; étape 2 « Associe ta première boutique » | Sans boutique, le menu latéral n'apparaît pas. | oui |
+| Accueil d'un nouveau compte | Étape 1 « Complétez votre profil » (Prénom, Nom, Numéro principal, Pays, Ville, « Continuer » ; sautée si le profil est complet) ; étape 2 « Votre boutique » : « Où vendez-vous aujourd'hui ? » (21/10) | Sans boutique, le menu latéral n'apparaît pas. Création rapide d'une boutique Woura, puis « Par quoi voulez-vous commencer ? » (facultative). | oui |
 
 ## B. Connecter ses boutiques (`app` : `/shops`, fenêtre d'ajout, `/link-shop`)
 
 | Route | Libellé exact | Règle métier | Doc ? |
 |---|---|---|---|
-| `/shops` | « Ma boutique en ligne » ; « Ajouter une boutique » ; « {count} / {total} boutiques » | Une seule boutique **active** à la fois ; tout le reste porte sur elle. | oui |
-| Fenêtre d'ajout | « As-tu déjà une boutique en ligne ? » → « Oui, j'ai déjà une boutique » / « Non, pas encore » | Question affichée seulement si `WOURA_PUBLIC_STOREFRONT` (pilote liste blanche en dev). Sinon : « Quel type de boutique souhaitez-vous ajouter ? ». | oui (les deux variantes) |
+| `/shops` | « Mes boutiques » (ex « Ma boutique en ligne », V2) ; « Ajouter une boutique » ; « {count} / {total} boutiques » ; accès : nom de boutique → « Gérer mes boutiques », avatar, Toutes les fonctionnalités › Canaux de vente, Plus | Une seule boutique **active** à la fois ; tout le reste porte sur elle. `?ajouter=1` ouvre la fenêtre d'ajout. | oui |
+| Fenêtre d'ajout | « Ajouter une boutique » : « Où vendez-vous aujourd'hui ? » → « Sur mon site Shopify, WooCommerce ou YouCan » / « Sur WhatsApp, TikTok, Facebook ou en live » (21/10) | Question affichée seulement si `WOURA_PUBLIC_STOREFRONT`. Sinon : « Reliez votre site Shopify, WooCommerce ou YouCan. » + lien WhatsApp « pour ouvrir votre boutique Woura ». | oui (variante avec drapeau) |
 | Statut des plateformes | badge « Bientôt » / option masquée | Réglage staff par plateforme. En dev : Shopify, WooCommerce, YouCan, WhatsApp actifs ; Chariow « Bientôt ». | ? (Q1) |
 | Champs communs | « Nom de la boutique », « Pays », « Devise principale », logo | Refus au-delà du plan : « Limite de boutiques atteinte pour votre abonnement. » | oui |
 | Shopify | « Installer l'app Shopify », « Code unique » (XXXX-XXXX), « Lier la boutique » | Erreur : « Code invalide ou boutique déjà liée à un compte. » | oui |
@@ -33,7 +33,7 @@
 | WooCommerce | « URL de la boutique », « Consumer Key », « Consumer Secret », « Connecter la boutique » | Produits importés à la connexion ; commandes antérieures **non** importées (il faut synchroniser). Erreur « Impossible de se connecter à WooCommerce: … ». | oui |
 | YouCan | « Connecter avec YouCan » | Produits importés à la connexion ; seules les nouvelles commandes arrivent ; retours d'erreur : « Autorisation refusée », « La connexion a expiré », « Limite de boutiques atteinte », « YouCan n'a pas confirmé la connexion ». | oui |
 | ~~Boutique WhatsApp~~ | Retirée le 03/10/2026 : plus de création de boutique WhatsApp ; l'assistant se relie à une boutique existante | — | retiré |
-| Boutique Woura | option « Boutique Woura » → ouvre le builder dans un nouvel onglet | Seulement avec `WOURA_PUBLIC_STOREFRONT`. | ? (Q1) |
+| Boutique Woura | « Créer ma boutique Woura » : Nom, Pays (devise affichée), WhatsApp facultatif → « Créer ma boutique » ; puis « Par quoi voulez-vous commencer ? » (6 choix + « Passer ») | Création rapide dans l'app (N5, `POST /shop/creation-rapide/`) ; la vitrine se crée ensuite dans le builder sur CETTE boutique (`/create?boutique=<id>`, « Créer la vitrine de {nom} », nom et pays figés, une seule génération). Seulement avec `WOURA_PUBLIC_STOREFRONT`. | oui |
 | Autres boutiques | « Utiliser cette boutique », « Réactiver », « Prolonger », « Convertir en vitrine Woura » → « Confirmer la conversion » | « Convertir » n'apparaît que pour une boutique non Woura **et non active**. | oui |
 | Synchro commandes (`/orders`) | « Actualiser » → fenêtre « Synchronisation », « Profondeur (jours) » (1–365, 14 par défaut), « Lancer la synchronisation » | Proposée pour toutes les plateformes sauf WhatsApp. | oui |
 | Synchro produits (`/products`) | « Synchroniser avec {source} » → « Synchronisation Produits » | Shopify et WooCommerce seulement. | oui |
@@ -100,7 +100,7 @@
 
 | Route | Libellé exact | Règle métier | Doc ? |
 |---|---|---|---|
-| `/dashboard` | « Bienvenue, {name} » ; Chiffre d'affaires / Dépenses / Profit / Panier moyen ; « Pour démarrer » ; « Analyse IA » | Analyse IA : 20 crédits. | oui |
+| `/dashboard` | Menu « Accueil » ; « Bienvenue, {name} » ; « À faire maintenant » (+ alertes 48 h, retours, stock faible, livreur) ; « Pour démarrer » (4 étapes, sans « boutique ») ; carte « Votre boutique en ligne » ; Encaissé / Dépenses / Bénéfice net / Panier moyen ; bouton « Analyse IA » → `/analytics` (ne lance rien) | Analyse IA unique, dans Chiffres (D8). | oui |
 | `/products` | « Produits » ; « Créer manuellement » / « Générer une fiche avec l'IA » ; Tous / Actif / Brouillon / Archivé | — | oui |
 | `/products/{id}` | « Détails » / « Gestion du stock » ; « Ajouter du stock », « Retirer du stock », « Ajouter une variante », « Prix de revient » | — | oui |
 | `/orders` | « Commandes » ; « Toutes » / « Programmées » ; « Créer une commande » ; « Exporter » | — | oui |
@@ -112,9 +112,10 @@
 | `/after-sales` | « Service Après-Vente » ; « Créer un ticket » ; En attente / Contacté / Clôturé | — | oui |
 | `/delivery-men`, `/call-center` | « Livreurs et agents » ; « Ajouter un livreur » ; « Copier le lien d'accès » ; « Ajouter un agent » | Documenter l'invitation et l'assignation seulement. | oui (partiel) |
 | `/expenses` | « Dépenses » ; « Ajouter une dépense » | — | oui |
-| `/analytics` | « Mes Chiffres » ; « Lancer l'analyse IA » | — | oui |
+| `/analytics` | « Chiffres » ; onglets « Bilan » · « Dépenses » · « Audience » ; « À retenir » ; « Lancer l'analyse IA · 20 crédits » ; solde insuffisant → « Acheter des crédits » | Audience seulement si vitrine publiée et pas en pause. | oui |
 | `/audience` | « Audience de la boutique » | Boutiques Woura seulement. | oui (si Woura documenté) |
-| `/automations` | « Outils IA » : Fiches produits IA, Publicités Facebook, Campagnes WhatsApp, Assistant WhatsApp | — | partiel |
+| `/automations` | Ancien hub « Outils IA » ; en V2 redirige vers `/tools#marketing` | Page doc `application/outils-ia` retirée, redirigée vers `application/fiches-produits-ia`. | non (retiré) |
+| `/tools` | « Toutes les fonctionnalités » : rubriques Canaux de vente, Livraison et opérations, Argent, Marketing et automatisation, Compte ; section « Votre menu » (épingler, retirer, rétablir, objectif) | V2 seulement pour « Votre menu ». | oui (`application/toutes-les-fonctionnalites`) |
 | `/ia/product-sheets` | « Fiches produits IA » ; « Publier sur ma boutique » | 20 crédits par fiche. | oui |
 | `/ia/facebook-ads` | « Publicités Facebook » ; « Relier avec Facebook » | Visible sans drapeau, mais App Review Meta en cours. | non (consigne) |
 | `/settings` | Général, Localisation, Produits, Notifications | — | oui |
@@ -205,3 +206,40 @@
 - **Factures** : aucune facture d'abonnement ou de recharge téléchargeable (documenté en Note).
 - **Affiliation** : le parrainage passe par un lien `?ref=` et un cookie : un filleul qui s'inscrit sur un autre appareil n'est pas rattaché.
 - **Onglets du compte selon le mode de facturation global** : en dev (`pay_as_you_go`) on voit « Crédits et consommation », « Historique », « Tarifs des services » ; à vérifier en production.
+
+## H. Navigation V2 (lot N7, 21/10/2026, branche `docs/navigation-v2`)
+
+Sources lues : `app` dev (2ee0a7c), `hooks/use-menu-marchand.ts` (`menuV2`, `raccourcis`, `rubriquesDuCatalogue`), `components/admin/{admin-sidebar,mobile-bottom-nav,feuille-plus,command-palette,admin-navbar}.tsx`, `app/[locale]/(app)/{tools,dashboard,analytics}/page.tsx`, `components/dashboard/*`, `components/shops/{add-shop-modal,objectif-demarrage,active-shop-banner}.tsx`, `messages/fr.json` ; `api` dev `shop/signaux_navigation.py`, `shop/alertes.py` ; `dashboard-storefront` dev `create/page.tsx`.
+
+### Ce qui a changé dans la doc
+
+- Nouvelle page `application/toutes-les-fonctionnalites.mdx` (groupe « Se repérer », avec l'accueil).
+- `application/outils-ia.mdx` → `application/fiches-produits-ia.mdx` (`git mv`), redirection Mintlify dans `docs.json`.
+- `application/tableau-de-bord.mdx` titrée « L'accueil » (adresse inchangée : `lib/aide.ts` de l'app pointe dessus).
+- Tous les chemins « menu X » réécrits pour la V2, ordinateur et téléphone ; création de boutique Woura rapide + vitrine facultative ensuite ; WooCommerce : import des 14 derniers jours ; assistant : onglet Résultats ; Chiffres : onglets, À retenir, analyse IA unique.
+- 53 emplacements de captures retirés (ancien menu ou écran changé), 12 nouvelles captures à faire : `_captures-a-refaire.md`.
+
+### Écarts code / interface relevés
+
+- **Résultats de l'assistant** : la note dit « Vos essais dans l'onglet « Tester » ne sont pas comptés. » ; l'onglet s'appelle « Essayer » (`WhatsAppShop.resultats.note` vs `WhatsAppShop.dashboard.tabTest`). La doc écrit « Essayer ».
+- **Checklist** : `Dashboard.starter.steps.share.copyError` renvoie encore vers « Ma boutique en ligne » (devenue « Mes boutiques »). Clés mortes : `Dashboard.starter.steps.shop`, `Sidebar.waBadge` (« Bêta »), `CommandPalette.nav.*` (« Tableau de bord », « Mes chiffres », « Produits et Stock », « SAV »…) sauf `agenda` et `account`.
+- **Téléphone : personnaliser le menu est difficile à trouver.** La feuille « Plus » recopie le catalogue mais pas l'entrée « Toutes les fonctionnalités » ni le lien « Personnaliser » ; « Votre menu » ne s'atteint que par la recherche (loupe) ou le fil d'Ariane des pages d'outils. La doc donne le chemin par la loupe.
+- **Sans aucun raccourci**, le groupe « Vos raccourcis » et son lien « Personnaliser » disparaissent (`menuV2` filtre les groupes vides) : seule la section « Votre menu » de `/tools` permet d'épingler.
+- **`lib/aide.ts` (app)** : `/ia` et `/automations` pointent sur `/application/outils-ia` (la redirection les rattrape) ; `/tools` et `/live` n'ont pas de page d'aide (le « ? » mène à l'accueil de la doc). À ajouter : `/tools` → `/application/toutes-les-fonctionnalites`, `/live` → `/application/vente-en-live`, `/ia` → `/application/fiches-produits-ia`.
+- **Vitrine d'une boutique existante** : l'assistant du builder redemande 1 à 5 produits avec photos et les crée dans la boutique ; des produits déjà saisis dans l'app peuvent être doublés (à vérifier). La carte de l'accueil dit « à partir de vos produits et de leurs photos ».
+- **Builder, étape Activité** : plus de « Frais de livraison » (commit 1819a47) ; la doc et la capture `01-activite.png` le montraient.
+- **Commandes** : « Toutes / Programmées » est devenu « Liste / Calendrier » ; bouton « Service après-vente » dans l'en-tête (icône seule sous 640 px).
+- **Indicateurs** : « Chiffre d'affaires / Profit » → « Encaissé / Bénéfice net » (accueil et Chiffres) ; titre « Mes Chiffres » → « Chiffres » ; « Service Après-Vente » → « Service après-vente ».
+- **Conversion en vitrine Woura** : proposée aussi sur la carte de la boutique active (la doc disait « jamais la boutique active »). D11 (retrait pour WooCommerce/YouCan, branches `fix/conversion-boutique-integree`) non fusionné : la section sera à revoir.
+- **Livreurs** : la doc décrit encore « Copier le lien d'accès » ; selon l'utilisateur (07/10), livreurs et agents reçoivent leurs accès par e-mail et utilisent l'app Woura Agent. Non vérifié dans le code, non modifié.
+- **Commentaire de tête de `use-menu-marchand.ts`** : décrit encore la V1 (« Vendre, Livrer, Ma boutique, Argent, Automatiser »).
+- **Copie de travail de `app`** : une modification non commitée (autre session) retire la carte « Veille marché » du catalogue.
+- **Bouton « Abonnement »** de l'en-tête : masqué sous 400 px, il passe dans le menu de l'avatar.
+
+### Questions ouvertes (navigation V2)
+
+10. **`NAVIGATION_V2` est en liste blanche** : la doc décrit la V2 pour tout le monde. La publier seulement à l'ouverture à tous, ou ajouter une note pour les comptes encore en V1 ?
+11. **Cartes non documentées dans « Toutes les fonctionnalités »** : Approvisionnement (Livraison et opérations), Publicités Facebook (Marketing et automatisation, et raccourci quand un compte publicitaire est relié), Veille marché (`DISCOVERY`), Wou (`WOU_ASSISTANT`). La doc ne les cite pas : les documenter, ou les masquer dans l'app ?
+12. **Emplacement de la nouvelle page** : groupe « Se repérer » en tête de l'onglet Application (avec l'accueil), plutôt que « Outils et réglages ».
+13. **Anciennes images** restées dans `images/` (dont `images/application/outils-ia/`) : à supprimer une fois les captures refaites ?
+
