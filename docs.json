@@ -157,9 +157,15 @@
             "icon": "layout-dashboard",
             "groups": [
               {
-                "group": "Au quotidien",
+                "group": "Se repérer",
                 "pages": [
                   "application/tableau-de-bord",
+                  "application/toutes-les-fonctionnalites"
+                ]
+              },
+              {
+                "group": "Au quotidien",
+                "pages": [
                   "application/commandes",
                   "application/produits",
                   "application/clients",
@@ -189,7 +195,7 @@
               {
                 "group": "Outils et réglages",
                 "pages": [
-                  "application/outils-ia",
+                  "application/fiches-produits-ia",
                   "application/notifications",
                   "application/parametres",
                   "application/compte"
@@ -228,5 +234,11 @@
         ]
       }
     ]
-  }
+  },
+  "redirects": [
+    {
+      "source": "/application/outils-ia",
+      "destination": "/application/fiches-produits-ia"
+    }
+  ]
 }
