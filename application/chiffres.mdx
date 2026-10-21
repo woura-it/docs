@@ -1,46 +1,82 @@
 ---
 title: "Chiffres et analyses"
-description: "Chiffre d'affaires, dépenses, bénéfice, panier moyen, et ce qui se vend le mieux."
+description: "Encaissé, dépenses, bénéfice net, ce qui mérite une décision, et l'analyse IA de votre boutique."
 icon: "chart-column"
 ---
 
-Le menu **Chiffres** ouvre **Mes Chiffres** : la performance de votre boutique active sur la période choisie.
+**Chiffres** vous dit ce que votre boutique active a vraiment rapporté sur la période choisie, et ce qui mérite une décision. Ouvrez-le avec **Chiffres**, dans le menu ou dans la barre du bas sur téléphone.
 
-<Frame caption="La page « Mes Chiffres ».">
-  <img src="/images/application/chiffres/01-chiffres.png" alt="Page Mes Chiffres avec le chiffre d'affaires, les dépenses, le profit, le nombre de commandes, le panier moyen et la courbe d'évolution." />
-</Frame>
+## Les onglets de Chiffres
+
+En haut de la page, trois onglets :
+- **Bilan** : vos indicateurs, ce qu'il faut retenir et l'analyse IA (cette page) ;
+- **Dépenses** : noter ce que vous dépensez. Voir [Dépenses](/application/depenses) ;
+- **Audience** : les visites de votre boutique en ligne. Voir [Audience de votre boutique Woura](/application/audience).
+
+**Audience** n'apparaît que pour une boutique Woura dont la boutique en ligne est publiée, et pas en pause.
+
+{/* capture à refaire : images/application/chiffres/01-chiffres.png */}
 
 ## Lire vos chiffres
 
 | Indicateur | Ce qu'il mesure |
 |---|---|
-| **Chiffre d'affaires** | Le total des commandes **livrées** pendant la période. |
-| **Dépenses** | Le total de vos dépenses notées. |
-| **Profit** | Le chiffre d'affaires moins vos dépenses. |
-| **Commandes** | Le nombre de commandes passées pendant la période. |
+| **Encaissé** | Vos commandes **livrées** pendant la période, et les acomptes payés en ligne. |
+| **Dépenses** | Le total de vos dépenses notées pour la période. |
+| **Bénéfice net** | L'encaissé moins vos dépenses de la période. L'abonnement Woura est compté à part. |
+| **Commandes** | Le nombre de commandes créées pendant la période. |
 | **Panier moyen** | Ce que dépense un client, en moyenne, par commande. |
 
 Chaque indicateur se compare à la période précédente (par exemple, « 100,0 % vs période préc. »).
 
-Plus bas : la courbe **Évolution du Chiffre d'Affaires** (revenus, dépenses, profit), la **Répartition des commandes** par statut et les **Produits qui ont généré le CA**.
+Choisissez la période en haut : **Aujourd'hui**, **7 jours**, **Ce mois**, ou des dates précises. **Ce mois** s'arrête à aujourd'hui.
 
-Choisissez la période en haut : **Aujourd'hui**, **7 jours**, **Ce mois**, ou des dates précises.
+Plus bas :
+- **Où part votre argent** : l'encaissé, puis chaque type de dépense, jusqu'au bénéfice net ;
+- **Ce que rapporte chaque produit** : vos produits les plus rentables, et ceux qui vous coûtent plus qu'ils ne rapportent ;
+- la courbe **Encaissé, dépenses et bénéfice**, la **Répartition des commandes** et **Encaissé par produit** ;
+- vos meilleurs clients et vos **Dernières dépenses**.
 
 <Note>
   Pour un bénéfice juste, renseignez le **prix de revient** de vos produits et notez vos **dépenses**. Voir [Produits et stock](/application/produits) et [Dépenses](/application/depenses).
 </Note>
 
+## À retenir
+
+Sous les indicateurs, le bloc **À retenir** résume en quelques phrases ce qui mérite une décision sur la période. Il est **gratuit** : Woura le calcule à partir de vos chiffres, sans IA. Il compte cinq lignes au plus, et chacune s'ouvre sur le produit ou la page concernés.
+
+Vous pouvez y lire, par exemple :
+- un produit qui vous a fait perdre de l'argent ;
+- un produit dont la publicité coûte plus que ce que rapporte une commande ;
+- un produit qui revient trop souvent ;
+- votre produit le plus rentable ;
+- des dépenses de publicité rattachées à aucun produit ;
+- des produits vendus sans prix de revient : leur bénéfice n'est pas calculé ;
+- des frais de livraison notés à la main en plus de ceux des commandes, peut-être comptés deux fois.
+
+Rien de marquant sur la période ? Le bloc n'apparaît pas.
+
+{/* capture à refaire : images/application/chiffres/02-a-retenir.png */}
+
 ## L'analyse IA
 
-**Lancer l'analyse IA** demande à l'IA un « score business » et des conseils à partir de vos chiffres. Elle coûte des crédits ; le coût est affiché avant de lancer.
+**Lancer l'analyse IA** demande à l'IA un « score business » et des conseils à partir des chiffres affichés : la boutique active et la période choisie. C'est la seule analyse IA de Woura ; le bouton **Analyse IA** de l'accueil mène ici.
+
+Le prix est écrit sur le bouton, par exemple **Lancer l'analyse IA · 20 crédits**. Le résultat s'ouvre dans une fenêtre : **Votre score business**, **Problèmes détectés**, **Ce que vous devez faire**, puis la recommandation complète.
+
+<Warning>
+  L'analyse débite des crédits à chaque lancement. Choisissez la bonne période avant de cliquer.
+</Warning>
+
+Votre solde ne suffit pas ? L'analyse ne se lance pas. Un message le dit, en général avec le nombre de crédits qui manquent, et propose le lien **Acheter des crédits**. Voir [Comprendre les crédits et votre abonnement](/demarrer/credits-et-abonnement).
 
 ## Et ensuite ?
 
 <CardGroup cols={2}>
-  <Card title="Audience de votre boutique" icon="activity" href="/application/audience">
-    Les visites de votre boutique Woura.
-  </Card>
   <Card title="Dépenses" icon="banknote" href="/application/depenses">
     Noter ce que vous dépensez.
+  </Card>
+  <Card title="Audience de votre boutique" icon="activity" href="/application/audience">
+    Les visites de votre boutique Woura.
   </Card>
 </CardGroup>

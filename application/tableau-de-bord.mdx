@@ -1,40 +1,81 @@
 ---
-title: "Le tableau de bord"
-description: "Votre activité en un coup d'œil : chiffre d'affaires, dépenses, bénéfice, commandes."
+title: "L'accueil"
+description: "Ce qui vous attend aujourd'hui, puis votre activité en un coup d'œil : encaissé, dépenses, bénéfice."
 icon: "layout-dashboard"
 ---
 
-Le **Tableau de bord** est le premier écran de l'application. Il résume l'activité de votre **boutique active** sur la période choisie.
+L'**Accueil** est le premier écran de l'application ; il s'appelait **Tableau de bord**. Il vous dit d'abord ce qui attend une action, puis il résume l'activité de votre **boutique active** sur la période choisie.
 
-## Ce que vous y trouvez
+Vous y revenez à tout moment avec **Accueil**, en haut du menu, ou dans la barre du bas sur téléphone. Le logo Woura y ramène aussi.
 
-- **Pour démarrer** : les premières étapes à faire (boutique, premier produit, livreur, WhatsApp, première dépense), cochées au fur et à mesure. **Masquer** la fait disparaître.
-- Les indicateurs **Chiffre d'affaires**, **Dépenses**, **Profit** et **Panier moyen**, comparés à la période précédente.
-- La courbe du chiffre d'affaires, la **Répartition des commandes** par statut, vos meilleurs produits, vos meilleurs clients et vos **Dépenses Récentes**.
+## À faire maintenant
 
-<Frame caption="Le bas du tableau de bord : répartition des commandes, produits, clients et dépenses.">
-  <img src="/images/application/tableau-de-bord/01-tableau-de-bord.png" alt="Tableau de bord avec la répartition des commandes par statut, les produits qui ont généré le chiffre d'affaires, les meilleurs clients et les dépenses récentes." />
-</Frame>
+Ce bloc liste ce qui attend une action dans votre boutique active. Chaque ligne ouvre la liste qui permet de la régler.
+
+| Ligne | Ce qu'elle signale | Elle ouvre |
+|---|---|---|
+| **… commandes en attente** | Des commandes à confirmer. « dont … depuis plus de 48 h » : certaines attendent depuis plus de deux jours, souvent des clients qui n'achèteront plus si personne ne les appelle. | **Commandes**, filtrées sur **En attente** |
+| **… paiements à vérifier** | Des clients ont envoyé leur capture de transfert. | Les commandes à vérifier |
+| **… livraisons programmées aujourd'hui** | Des livraisons prévues pour la journée. | Le calendrier des commandes |
+| **… produits en rupture de stock** | Des produits à 0. | **Produits** |
+| **… produits en stock faible** | Des produits sous votre seuil, indiqué entre parenthèses. | **Produits** |
+| **Retours élevés : … % sur 7 jours** | Plus d'une commande sur dix revient. | Les commandes **Retournées** |
+| **Le nom d'un livreur : … % de retours** | Un livreur rapporte beaucoup de colis, sur au moins 5 commandes en 7 jours. | La fiche du livreur |
+
+Rien à traiter ? Une phrase le dit.
+
+<Tip>
+  Le seuil du stock faible est votre **Seuil de réapprovisionnement**, dans **Paramètres** → **Produits**. Voir [Paramètres de la boutique](/application/parametres).
+</Tip>
+
+{/* capture à refaire : images/application/tableau-de-bord/03-a-faire-maintenant.png */}
+
+## Pour démarrer
+
+Tant que vos premiers pas ne sont pas faits, la carte **Pour démarrer** les liste, chacun avec son bouton :
+- **Ajouter un produit avec son prix de revient** ;
+- **Partager le lien de ma boutique**, seulement quand votre boutique en ligne est publiée ;
+- **Traiter une première commande** ;
+- **Noter une première dépense**.
+
+Chaque étape se coche toute seule. L'ordre suit votre réponse à « Par quoi voulez-vous commencer ? ». **Masquer**, la croix en haut à droite, fait disparaître la carte pour cette boutique.
+
+## Votre boutique en ligne
+
+Une boutique Woura n'a pas forcément de site. Tant qu'elle n'a pas de boutique en ligne publiée, l'accueil affiche la carte **Votre boutique en ligne** :
+- pas encore de boutique en ligne : **Créer ma boutique en ligne** ouvre l'éditeur de boutique, sur cette boutique. À partir de quelques phrases et des photos de 1 à 5 produits, Woura génère le site. C'est facultatif, et offert. Voir [Créer une boutique avec l'assistant](/boutique/creer-avec-assistant) ;
+- boutique en ligne créée, mais pas encore publiée ou mise en pause : **Ouvrir l'éditeur** vous permet de la relire et de la publier. Voir [Prévisualiser et publier](/boutique/publier).
+
+Vous vendez sans site ? La croix de la carte la masque pour cette boutique.
+
+{/* capture à refaire : images/application/tableau-de-bord/04-carte-boutique-en-ligne.png */}
+
+Une fois votre boutique en ligne publiée, cette carte laisse la place à **Ma boutique en ligne** : les visites de la période, et **Voir l'audience**. Voir [Audience de votre boutique Woura](/application/audience).
+
+## Vos chiffres de la période
+
+- Les indicateurs **Encaissé**, **Dépenses**, **Bénéfice net** et **Panier moyen**, comparés à la période précédente. **Voir le détail** ouvre **Chiffres**.
+- Plus bas : la courbe **Encaissé, dépenses et bénéfice**, la **Répartition des commandes**, **Encaissé par produit**, vos meilleurs clients et vos **Dernières dépenses**.
+
+{/* capture à refaire : images/application/tableau-de-bord/01-tableau-de-bord.png */}
+
+<Note>
+  **Encaissé** compte vos commandes livrées et les acomptes payés en ligne. **Bénéfice net** : l'encaissé moins vos dépenses de la période ; l'abonnement Woura est compté à part.
+</Note>
 
 ## Choisir la période
 
-En haut à droite : **Aujourd'hui**, **7 jours**, **Ce mois**, ou des dates précises avec le calendrier.
+En haut à droite : **Aujourd'hui**, **7 jours**, **Ce mois**, ou des dates précises avec le calendrier. **Ce mois** s'arrête à aujourd'hui.
 
-<Note>
-  Le chiffre d'affaires compte les commandes **livrées** pendant la période. Une commande en attente ou en livraison n'y entre pas encore.
-</Note>
+## L'analyse IA est dans Chiffres
 
-## L'analyse IA
-
-**Analyse IA** demande à l'IA un diagnostic de votre activité et des conseils. Elle coûte des crédits : le coût s'affiche avant de lancer.
+Le bouton **Analyse IA** de l'accueil ne lance rien : il ouvre **Chiffres**, où se trouve l'analyse IA, avec son prix affiché sur le bouton. Voir [Chiffres et analyses](/application/chiffres).
 
 ## Sur téléphone
 
-Sur téléphone, la barre du bas donne accès aux écrans les plus utilisés : **Chiffres**, **Commandes**, **Produits**, **Compte**. Le menu complet s'ouvre avec le bouton en haut à gauche.
+La barre du bas donne accès à **Accueil**, **Commandes**, **Produits**, **Chiffres**, et à **Plus** pour tout le reste. Voir [Le menu et toutes les fonctionnalités](/application/toutes-les-fonctionnalites).
 
-<Frame caption="Le tableau de bord sur téléphone.">
-  <img src="/images/application/tableau-de-bord/02-mobile.png" alt="Tableau de bord Woura sur téléphone avec la barre de navigation en bas." style={{ maxWidth: "320px", margin: "0 auto" }} />
-</Frame>
+{/* capture à refaire : images/application/tableau-de-bord/02-mobile.png */}
 
 ## Et ensuite ?
 
