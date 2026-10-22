@@ -37,8 +37,9 @@ info:
     par minute et par clé sur `POST /webhook-endpoints/{id}/ping`. Au-delà :
     `429 rate_limited` avec `Retry-After` (secondes).
 
-    **Idempotence.** Envoyez un en-tête `Idempotency-Key` (255 caractères au
-    plus) sur chaque `POST`. Le même envoi avec la même clé rend la réponse du
+    **Idempotence.** L'en-tête `Idempotency-Key` (255 caractères au plus) est
+    **obligatoire** sur chaque `POST` ; sans lui : `400
+    idempotency_key_required`, rien n'est fait. Le même envoi avec la même clé rend la réponse du
     premier, sans rien refaire, avec l'en-tête `Idempotent-Replayed: true`. La
     même clé avec une autre méthode, un autre chemin ou un autre corps répond
     `409 idempotency_key_reused` (le chemin est comparé sans barre finale :
@@ -3199,10 +3200,11 @@ components:
     IdempotencyKey:
       name: Idempotency-Key
       in: header
-      required: false
+      required: true
       description: |
-        Identifiant unique de la requête (un UUID, par exemple), 255
-        caractères au plus (`400` sinon). Renvoyée avec le même corps, la
+        Obligatoire sur tout `POST` (`400 idempotency_key_required` sinon,
+        rien n'est fait). Identifiant unique de la requête (un UUID, par
+        exemple), 255 caractères au plus (`400` sinon). Renvoyée avec le même corps, la
         requête rend la réponse du premier envoi sans rien refaire
         (`Idempotent-Replayed: true`) ; avec une autre méthode, un autre
         chemin (comparé sans barre finale) ou un autre corps :

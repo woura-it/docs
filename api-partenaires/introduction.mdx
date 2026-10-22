@@ -43,7 +43,7 @@ Woura vous transmet les commandes que les marchands vous confient, par webhooks,
 | Adresse | `https://api.woura.africa/api/partner/v1/` |
 | Authentification | `Authorization: Bearer wk_live_…` ou `Bearer wk_test_…` |
 | Format | JSON seulement (`Content-Type: application/json`, sinon `415`) |
-| Idempotence | En-tête `Idempotency-Key` sur tout `POST` (sur cette page) |
+| Idempotence | En-tête `Idempotency-Key` **obligatoire** sur tout `POST` (sur cette page) |
 | Limite de débit | 300 requêtes par minute et par clé ; 30 invitations de marchands par heure ; 10 pings de webhook par minute. Au-delà : `429 rate_limited` et `Retry-After` (secondes) |
 | Pagination | `page` (à partir de 1) et `page_size` (20 par défaut, 100 au plus). Réponse : `{"count", "next", "previous", "results"}` |
 
@@ -93,6 +93,7 @@ imbriqué s'écrit `items[1].quantity` ou `customer.name` :
 | HTTP | `code` | Quand |
 |---|---|---|
 | 400 | `validation_error` | Champ manquant, invalide ou **inconnu** (une faute de frappe est refusée, pas ignorée), corps qui n'est pas un objet JSON, filtre mal formé, ou refus du changement de statut par la commande (stock insuffisant chez vous en mode dépôt, date passée) |
+| 400 | `idempotency_key_required` | `POST` sans en-tête `Idempotency-Key` : rien n'est fait |
 | 400 | `invalid_url` | URL de webhook refusée ([webhooks](/api-partenaires/webhooks)) |
 | 401 | `invalid_api_key` | Clé absente, mal formée, inconnue ou révoquée |
 | 403 | `company_inactive`, `partner_suspended`, `company_not_verified` | Voir sur cette page |
@@ -117,8 +118,11 @@ imbriqué s'écrit `items[1].quantity` ou `customer.name` :
 
 ## Idempotence
 
-Envoyez un identifiant unique (UUID par exemple, 255 caractères au plus) dans
-`Idempotency-Key` sur chaque `POST`. Si vous renvoyez **la même requête avec la
+L'en-tête `Idempotency-Key` est **obligatoire sur chaque `POST`** : un
+identifiant unique par opération (UUID par exemple, 255 caractères au plus).
+Sans lui, la requête est refusée (`400 idempotency_key_required`) et rien
+n'est fait. Générez la clé **avant** le premier envoi et gardez-la avec
+l'opération : c'est elle qui permet de renvoyer sans risque. Si vous renvoyez **la même requête avec la
 même clé** (coupure réseau, délai dépassé), Woura rend la réponse du premier
 envoi sans rien refaire, avec l'en-tête `Idempotent-Replayed: true`. La même
 clé avec une autre méthode, un autre chemin ou un autre corps est refusée
