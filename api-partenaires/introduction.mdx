@@ -44,7 +44,7 @@ Woura vous transmet les commandes que les marchands vous confient, par webhooks,
 | Adresse | `https://api.woura.africa/api/partner/v1/` |
 | Authentification | `Authorization: Bearer wk_live_…` ou `Bearer wk_test_…` |
 | Format | JSON seulement (`Content-Type: application/json`, sinon `415`) |
-| Idempotence | En-tête `Idempotency-Key` **obligatoire** sur tout `POST` (sur cette page) |
+| Idempotence | En-tête `Idempotency-Key` **obligatoire** sur tout `POST` et tout `PUT` (sur cette page) |
 | Limite de débit | 300 requêtes par minute et par clé ; 30 invitations de marchands par heure ; 10 pings de webhook par minute. Au-delà : `429 rate_limited` et `Retry-After` (secondes) |
 | Pagination | `page` (à partir de 1) et `page_size` (20 par défaut, 100 au plus). Réponse : `{"count", "next", "previous", "results"}` |
 
@@ -94,7 +94,7 @@ imbriqué s'écrit `items[1].quantity` ou `customer.name` :
 | HTTP | `code` | Quand |
 |---|---|---|
 | 400 | `validation_error` | Champ manquant, invalide ou **inconnu** (une faute de frappe est refusée, pas ignorée), corps qui n'est pas un objet JSON, filtre mal formé, ou refus du changement de statut par la commande (stock insuffisant chez vous en mode dépôt, date passée) |
-| 400 | `idempotency_key_required` | `POST` sans en-tête `Idempotency-Key` : rien n'est fait |
+| 400 | `idempotency_key_required` | `POST` ou `PUT` sans en-tête `Idempotency-Key` : rien n'est fait |
 | 400 | `invalid_url` | URL de webhook refusée ([webhooks](/api-partenaires/webhooks)) |
 | 401 | `invalid_api_key` | Clé absente, mal formée, inconnue ou révoquée |
 | 403 | `company_inactive`, `partner_suspended`, `company_not_verified` | Voir sur cette page |
@@ -121,7 +121,8 @@ imbriqué s'écrit `items[1].quantity` ou `customer.name` :
 
 ## Idempotence
 
-L'en-tête `Idempotency-Key` est **obligatoire sur chaque `POST`** : un
+L'en-tête `Idempotency-Key` est **obligatoire sur chaque `POST` et chaque
+`PUT`** : un
 identifiant unique par opération (UUID par exemple, 255 caractères au plus).
 Sans lui, la requête est refusée (`400 idempotency_key_required`) et rien
 n'est fait. Générez la clé **avant** le premier envoi et gardez-la avec
@@ -147,11 +148,15 @@ clé avec une autre méthode, un autre chemin ou un autre corps est refusée
    `shipment.assigned`, acceptez-la, faites-la avancer jusqu'à `delivered`.
    Essayez un refus, un report, l'annulation et la modification par le
    marchand, un transfert de stock.
-4. Relevez vos livraisons de test : `POST /statements` (`issue: true`),
+4. Chargez votre grille de test (`PUT /zones`) et créez une commande de test
+   sans `delivery_fee` : elle prend votre tarif, et `zone` dit laquelle
+   ([zones et tarifs](/api-partenaires/zones)).
+5. Relevez vos livraisons de test : `POST /statements` (`issue: true`),
    déclarez un versement, puis simulez la réponse du marchand
    (`/test/statements/{id}/confirm` ou `/dispute`).
-5. Dédoublonnez sur `id`, renvoyez toujours le même `Idempotency-Key` pour un
+6. Dédoublonnez sur `id`, renvoyez toujours le même `Idempotency-Key` pour un
    même geste, et gérez les `409`.
-6. Une fois votre société vérifiée, Woura vous remet une clé live ;
-   enregistrez vos points `live`, puis envoyez votre lien d'invitation à vos
-   e-commerçants.
+7. Une fois votre société vérifiée, Woura vous remet une clé live ;
+   enregistrez vos points `live`, chargez votre vraie grille (`PUT /zones`)
+   — elle vous place dans l'annuaire des marchands —, puis envoyez votre lien
+   d'invitation à vos e-commerçants.

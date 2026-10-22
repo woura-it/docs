@@ -42,7 +42,10 @@ Simuler ce que ferait un marchand :
 Plafonds par société : 500 commandes de test et 200 transferts de test par
 24 heures, 20 marchands fictifs en tout (`409 sandbox_limit_reached`).
 
-Sans `items`, un article de test au prix `cod_amount` (15 000 par défaut). Le
+Sans `delivery_fee`, le tarif de la grille de votre bac à sable pour la ville
+du client ([zones et tarifs](/api-partenaires/zones) : `PUT /zones` avec votre
+clé de test), sinon 1 500. Sans `items`, un article de test au prix
+`cod_amount` (15 000 par défaut). Le
 téléphone du client est fictif (+999…). En mode `depot`, le stock n'est pas
 contrôlé dans le bac à sable. Les [relevés](/api-partenaires/releves) marchent
 comme en live sur les livraisons du bac à sable (`merchant_id` : celui de la
@@ -52,11 +55,7 @@ tourne qu'en live, `/test/statements/weekly-run` la simule. Seul
 `403 test_key_required` avec une clé live, et `POST /merchant-invitations`
 n'envoie rien avec une clé de test (même réponse).
 
-## À venir, et questions ouvertes
-
-| Quoi | Lot |
-|---|---|
-| `GET` / `PUT /zones` : votre grille de tarifs par pays et ville | L4 |
+## Questions ouvertes
 
 Vos réponses peuvent encore faire évoluer cette API :
 
@@ -64,5 +63,7 @@ Vos réponses peuvent encore faire évoluer cette API :
 2. Stock en entrepôt chez vous (`depot`), ramassage chez le marchand (`pickup`), ou les deux ?
 3. Preuve de livraison captée : photo, code, signature ?
 4. Reversement COD aujourd'hui : fréquence, moyen, forme du relevé, frais retenus.
-5. Pays et villes couverts, et votre grille de tarifs (fichier).
+5. Votre grille : chargez-la par `PUT /zones` ([zones et tarifs](/api-partenaires/zones)), ou
+   envoyez-nous le fichier (une ligne par ville ou commune : pays, ville,
+   commune, tarif, délai en heures, votre code de zone).
 6. Volume par jour, nombre de marchands à amener, et contact technique.

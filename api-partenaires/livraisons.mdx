@@ -45,6 +45,8 @@ description: "La livraison (shipment), ses statuts et les routes qui la font ava
   "photo_url": "",
   "rescheduled_for": null,
   "statement_id": null,
+  "zone": {"country": "BJ", "city": "Cotonou", "district": "Fidjrossè", "code": "CTN-04", "fee": 1500,
+           "currency": "XOF", "delivery_time_hours": 24, "match": "district"},
   "created_at": "2026-10-22T09:12:03+01:00",
   "updated_at": "2026-10-22T09:15:40+01:00",
   "closed_at": null,
@@ -67,7 +69,7 @@ description: "La livraison (shipment), ses statuts et les routes qui la font ava
 | `customer.address` | L'adresse saisie (peut être vide) ; `details` : les précisions de livraison — souvent l'adresse complète pour une commande WhatsApp ou saisie à la main. `country` tel que saisi (code ISO 2 le plus souvent) |
 | `items` | Les articles. `product_id` : l'identifiant Woura du produit (celui du stock, [marchands et stock](/api-partenaires/marchands-et-stock)), vide pour un article sans fiche produit |
 | `cod_amount` | Ce que votre livreur encaisse auprès du client, frais de livraison compris s'ils sont à la charge du client. `0` si le client a déjà tout payé en ligne |
-| `delivery_fee` | Vos frais de livraison pour cette commande (saisis par le marchand, ou les frais réels que vous déclarez avec `delivered`) |
+| `delivery_fee` | Vos frais de livraison pour cette commande : ceux que le marchand a retenus — proposés depuis votre grille ([zones et tarifs](/api-partenaires/zones)), il peut les changer —, ou les frais réels que vous déclarez avec `delivered` |
 | `delivery_fee_included` | `true` : le marchand vous paie la course (elle est dans son prix). `false` : le client vous la paie en plus, elle est déjà dans `cod_amount` |
 | `currency` | Devise de la commande (`XOF`, `XAF`…) |
 | `payment` | Paiement en ligne reçu par le marchand : `unpaid`, `partially_paid` (acompte : `paid_amount`) ou `paid` |
@@ -75,6 +77,7 @@ description: "La livraison (shipment), ses statuts et les routes qui la font ava
 | `reason` | Motif du dernier statut (refus, échec, report, annulation) |
 | `rescheduled_for` | Nouvelle date de passage (statut `rescheduled`) |
 | `statement_id` | Le relevé COD qui solde cette livraison ([relevés](/api-partenaires/releves)), `null` tant qu'elle n'est sur aucun relevé (ou si le sien a été annulé) |
+| `zone` | La zone de **votre grille** qui couvre l'adresse ([zones et tarifs](/api-partenaires/zones)), fixée à l'assignation et relue seulement si l'adresse de livraison change — pas quand vous modifiez votre grille ; `match` : `district` (une commune nommée) ou `city` (la ville entière). `null` sans grille, sans correspondance, ou si la zone n'est pas dans la devise de la commande. Comparez `zone.fee` à `delivery_fee` pour voir si le marchand a changé votre tarif |
 | `closed_at` | Date de clôture (livraison inactive). Une fois close, la livraison est **figée** : client, articles, montants et note restent ceux que vous connaissiez à la clôture ; les retouches faites ensuite par le marchand (pour un autre livreur) ne vous parviennent pas |
 | `events` | Journal complet, du plus ancien au plus récent. `actor` : `merchant`, `delivery_company` (vous, depuis l'app Woura Agent), `api` (vous, par l'API), `call_center`, `woura_staff`, `system`. `occurred_at` : ce que vous avez déclaré ; `recorded_at` : la réception par Woura |
 
@@ -82,7 +85,7 @@ description: "La livraison (shipment), ses statuts et les routes qui la font ava
 
 | `status` | Qui le pose | Ce que devient la commande chez le marchand | Ce que Woura fait |
 |---|---|---|---|
-| `assigned` | marchand ou call center | inchangée | webhook `shipment.assigned` |
+| `assigned` | marchand, call center, ou assignation automatique ([zones et tarifs](/api-partenaires/zones)) | inchangée | webhook `shipment.assigned` |
 | `accepted` | vous, ou automatiquement | inchangée | |
 | `refused` | vous, **motif obligatoire** | revient sans livreur, statut inchangé | le marchand est prévenu |
 | `picked_up` | vous (mode `pickup` seulement) | en livraison | le client est prévenu |
@@ -140,12 +143,14 @@ lui-même ou la marque retournée, votre livraison passe `cancelled`,
   "environment": "live", "verified": true, "country": "BJ", "programs": ["delivery"],
   "api_key": {"prefix": "wk_live_AbCdEfGh1234", "created_at": "2026-10-22T10:00:00+01:00"},
   "invitation_link": "https://woura.africa/delivery-men/invite/Xk2…",
-  "rate_limit": "300/min"
+  "rate_limit": "300/min",
+  "directory": {"listed": true, "countries": ["BJ", "TG"], "reasons": []}
 }
 ```
 
 `invitation_link` : votre lien d'invitation ([marchands et stock](/api-partenaires/marchands-et-stock)), avec une clé live
-seulement (`null` en test).
+seulement (`null` en test). `directory` : où les marchands vous trouvent dans
+leur annuaire ([zones et tarifs](/api-partenaires/zones)), quelle que soit la clé.
 
 ## `GET /shipments`
 

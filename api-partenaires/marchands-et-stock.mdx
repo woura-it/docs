@@ -20,6 +20,7 @@ commandes qu'avec un partenariat **accepté**.
     "status": "accepted",
     "stock_mode": "pickup",
     "auto_accept": true,
+    "auto_assign": false,
     "message": "Bonjour, nous livrons à Cotonou…",
     "response_message": "",
     "requested_at": "2026-10-20T11:00:00+01:00",
@@ -32,8 +33,9 @@ commandes qu'avec un partenariat **accepté**.
 `status` : `pending` (demande du marchand), `accepted`, `refused`,
 `suspended`, `terminated`. Pour un partenariat `refused` ou `terminated`, seuls
 `id` et `partnership` sont rendus (pas de nom, ni de téléphone, ni d'adresse).
-Le mode de stock, l'acceptation automatique et l'adresse de ramassage sont
-réglés par le marchand.
+Le mode de stock, l'acceptation automatique, l'adresse de ramassage et
+l'**assignation automatique** (`auto_assign`, désactivée par défaut, voir
+[zones et tarifs](/api-partenaires/zones)) sont réglés par le marchand.
 
 | Méthode | Chemin | Rôle |
 |---|---|---|

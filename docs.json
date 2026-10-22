@@ -250,6 +250,7 @@
                   "api-partenaires/introduction",
                   "api-partenaires/livraisons",
                   "api-partenaires/marchands-et-stock",
+                  "api-partenaires/zones",
                   "api-partenaires/releves",
                   "api-partenaires/webhooks",
                   "api-partenaires/mode-test"

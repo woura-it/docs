@@ -2,12 +2,13 @@ openapi: 3.1.0
 
 info:
   title: API partenaires Woura — livraison
-  version: "2026-10-22"
+  version: "1.2"
   description: |
     L'API des sociétés de livraison partenaires de Woura : recevoir les
     commandes que les marchands vous confient (livraisons), déclarer leurs
     statuts, répondre aux demandes de partenariat, gérer le stock en dépôt,
-    tenir vos relevés COD avec les marchands et recevoir des webhooks signés.
+    tenir votre grille de zones et tarifs, tenir vos relevés COD avec les
+    marchands et recevoir des webhooks signés.
 
     **Authentification.** `Authorization: Bearer wk_live_…` ou
     `Bearer wk_test_…`. Les clés sont créées par Woura ; une clé live ne
@@ -38,7 +39,7 @@ info:
     `429 rate_limited` avec `Retry-After` (secondes).
 
     **Idempotence.** L'en-tête `Idempotency-Key` (255 caractères au plus) est
-    **obligatoire** sur chaque `POST` ; sans lui : `400
+    **obligatoire** sur chaque `POST` et chaque `PUT` ; sans lui : `400
     idempotency_key_required`, rien n'est fait. Le même envoi avec la même clé rend la réponse du
     premier, sans rien refaire, avec l'en-tête `Idempotent-Replayed: true`. La
     même clé avec une autre méthode, un autre chemin ou un autre corps répond
@@ -46,7 +47,7 @@ info:
     `/x` et `/x/` sont la même requête). Seules les réponses 2xx sont gardées
     (une requête refusée peut être corrigée et renvoyée avec la même clé),
     pendant 7 jours. Les clés sont propres à chaque clé API. L'en-tête n'est
-    lu que sur une route qui accepte `POST`.
+    lu que sur une route qui accepte `POST` ou `PUT`.
 
     **Erreurs.** Toujours `{"code", "message", "details"}` : `code` est
     stable, en anglais ; `message` est lisible, en français (les messages de
@@ -85,6 +86,15 @@ tags:
       Ce que vous déclarez fait suivre la commande du marchand par le même
       chemin que ses propres changements de statut (messages au client, stock,
       dépenses).
+  - name: Zones
+    description: |
+      Votre grille de zones et tarifs : où vous livrez, à quel tarif, en
+      combien de temps. Elle place votre société dans l'annuaire des marchands
+      (vérifiée, pays de vos zones actives), pré-remplit les frais quand un
+      marchand vous confie une commande, et sert à l'assignation automatique
+      d'un partenariat qui l'a activée (`auto_assign`, désactivée par défaut).
+      `PUT /zones` remplace toute la grille d'un bloc. Une clé de test lit et
+      remplace la grille de son bac à sable.
   - name: Stock
     description: |
       Le stock que les marchands vous confient en dépôt (mode `depot`) :
@@ -144,6 +154,11 @@ paths:
         avec une clé de test.
 
         `rate_limit` : la limite de débit réellement appliquée à chaque clé.
+
+        `directory` : où les marchands vous trouvent dans leur annuaire (pays
+        de vos zones actives ; avant votre première grille, le pays déclaré à
+        l'inscription), et sinon pourquoi — la même réponse avec une clé de
+        test.
       responses:
         "200":
           description: Votre société.
@@ -164,6 +179,10 @@ paths:
                   created_at: "2026-10-20T08:30:12.402117+00:00"
                 invitation_link: https://woura.africa/delivery-men/invite/q7Xk2mN9pL4vR8sT1wY6zA3bC5dE0fGh
                 rate_limit: 300/min
+                directory:
+                  listed: true
+                  countries: [BJ, TG]
+                  reasons: []
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -662,6 +681,7 @@ paths:
                     photo_url: ""
                     rescheduled_for: null
                     statement_id: null
+                    zone: null
                     created_at: "2026-10-22T09:12:03.418225+00:00"
                     updated_at: "2026-10-22T09:20:47.006512+00:00"
                     closed_at: null
@@ -753,6 +773,7 @@ paths:
                 photo_url: ""
                 rescheduled_for: null
                 statement_id: null
+                zone: null
                 created_at: "2026-10-22T09:12:03.418225+00:00"
                 updated_at: "2026-10-22T09:20:47.006512+00:00"
                 closed_at: null
@@ -1078,6 +1099,7 @@ paths:
                 photo_url: https://cdn.livraisons-express.example/pod/EXP-2026-000123.jpg
                 rescheduled_for: null
                 statement_id: null
+                zone: null
                 created_at: "2026-10-22T09:12:03.418225+00:00"
                 updated_at: "2026-10-22T14:42:11.270954+00:00"
                 closed_at: null
@@ -1131,6 +1153,141 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/ShipmentConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Zones
+  # ══════════════════════════════════════════════════════════════════════
+
+  /zones:
+    get:
+      operationId: getZones
+      tags: [Zones]
+      summary: Votre grille de zones et tarifs
+      description: |
+        Toute la grille, non paginée (2 000 zones au plus), dans l'ordre pays,
+        ville, commune. La même forme que le corps de `PUT /zones` : relisez,
+        modifiez, renvoyez. `updated_by` : `api` (vous), `woura_staff` (un
+        fichier importé par l'équipe Woura), `null` avant la première grille.
+      parameters:
+        - name: country
+          in: query
+          required: false
+          description: Code pays ISO à deux lettres (`BJ`). Un autre format répond `400`.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{2}$"
+      responses:
+        "200":
+          description: La grille.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneList"
+              example:
+                object: zone_list
+                count: 2
+                updated_at: "2026-10-22T10:00:00.120394+00:00"
+                updated_by: api
+                zones:
+                  - country: BJ
+                    city: Cotonou
+                    district: ""
+                    fee: 1000
+                    currency: XOF
+                    delivery_time_hours: 24
+                    code: CTN
+                    active: true
+                  - country: BJ
+                    city: Cotonou
+                    district: Fidjrossè
+                    fee: 1500
+                    currency: XOF
+                    delivery_time_hours: 24
+                    code: CTN-04
+                    active: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: replaceZones
+      tags: [Zones]
+      summary: Remplacer toute la grille
+      description: |
+        La **liste complète** : toute zone absente est retirée. Validation
+        stricte, tout ou rien — une seule zone fausse et rien n'est modifié ;
+        toutes les erreurs sont rendues par position (`zones[3].fee`). Une
+        même combinaison pays + ville + commune (comparée sans casse, accents
+        ni ponctuation) n'apparaît qu'une fois. Une liste vide retire toutes
+        vos zones, et votre société de l'annuaire des marchands.
+
+        Pas de webhook pour ce que vous faites vous-même ; `zones.updated`
+        part quand l'équipe Woura remplace votre grille par un fichier.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZonesReplaceRequest"
+            example:
+              zones:
+                - country: BJ
+                  city: Cotonou
+                  fee: 1000
+                  delivery_time_hours: 24
+                  code: CTN
+                - country: BJ
+                  city: Cotonou
+                  district: Fidjrossè
+                  fee: 1500
+                - country: TG
+                  city: Lomé
+                  fee: 1200
+                  active: false
+      responses:
+        "200":
+          description: La nouvelle grille, comme `GET /zones`.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneList"
+        "400":
+          description: |
+            `validation_error` (grille refusée, rien n'est modifié) ou
+            `idempotency_key_required`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: validation_error
+                message: "Grille refusée : 2 erreur(s). Rien n'a été modifié."
+                details:
+                  zones[1].country: ["Pays hors de la zone franc CFA prise en charge : BF, BJ, CG, CI, CM, GA, ML, NE, SN, TD, TG."]
+                  zones[3].fee: [Nombre entier attendu.]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
         "429":
@@ -2460,6 +2617,7 @@ paths:
                 photo_url: ""
                 rescheduled_for: null
                 statement_id: null
+                zone: null
                 created_at: "2026-10-22T16:20:08.551203+00:00"
                 updated_at: "2026-10-22T16:20:08.551240+00:00"
                 closed_at: null
@@ -2903,6 +3061,7 @@ webhooks:
                   photo_url: ""
                   rescheduled_for: null
                   statement_id: null
+                  zone: null
                   created_at: "2026-10-22T09:12:03.418225+00:00"
                   updated_at: "2026-10-22T09:12:03.418261+00:00"
                   closed_at: null
@@ -2998,6 +3157,7 @@ webhooks:
                   photo_url: ""
                   rescheduled_for: null
                   statement_id: null
+                  zone: null
                   created_at: "2026-10-22T09:12:03.418225+00:00"
                   updated_at: "2026-10-22T17:30:12.886020+00:00"
                   closed_at: null
@@ -3100,6 +3260,7 @@ webhooks:
                   photo_url: ""
                   rescheduled_for: null
                   statement_id: null
+                  zone: null
                   created_at: "2026-10-22T11:48:20.337415+00:00"
                   updated_at: "2026-10-22T12:05:33.106248+00:00"
                   closed_at: null
@@ -3213,6 +3374,7 @@ webhooks:
                   photo_url: ""
                   rescheduled_for: null
                   statement_id: null
+                  zone: null
                   created_at: "2026-10-22T09:12:03.418225+00:00"
                   updated_at: "2026-10-22T10:15:48.227330+00:00"
                   closed_at: null
@@ -3699,6 +3861,44 @@ webhooks:
           application/json:
             schema:
               $ref: "#/components/schemas/StatementCancelledEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  zones.updated:
+    post:
+      operationId: onZonesUpdated
+      tags: [Webhooks]
+      summary: zones.updated
+      description: |
+        L'équipe Woura a remplacé votre grille par un fichier que vous lui
+        avez envoyé. Sans les zones : relisez `GET /zones`. Pas envoyé quand
+        vous la remplacez vous-même (`PUT /zones`).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZonesUpdatedEvent"
+            example:
+              id: evt_2b7d4e9a1c3f4e6b8a0d5c7e9f1b3a5d
+              object: event
+              type: zones.updated
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T11:05:41.020511+00:00"
+              data:
+                zones:
+                  count: 48
+                  updated_at: "2026-10-22T11:05:40.981233+00:00"
+                  updated_by: woura_staff
       responses:
         "2XX":
           $ref: "#/components/responses/WebhookReceived"
@@ -4524,6 +4724,7 @@ components:
         - statement.confirmed
         - statement.disputed
         - statement.cancelled
+        - zones.updated
     WebhookEventTypeOrPing:
       type: string
       description: Tous les types d'événements, `ping` compris.
@@ -4543,13 +4744,14 @@ components:
         - statement.confirmed
         - statement.disputed
         - statement.cancelled
+        - zones.updated
         - ping
 
     # ── Société ─────────────────────────────────────────────────────────
 
     Company:
       type: object
-      required: [id, object, name, environment, verified, country, programs, api_key, invitation_link, rate_limit]
+      required: [id, object, name, environment, verified, country, programs, api_key, invitation_link, rate_limit, directory]
       properties:
         id:
           type: string
@@ -4589,6 +4791,149 @@ components:
           type: string
           description: Limite de débit réellement appliquée à chaque clé (toutes routes).
           example: 300/min
+        directory:
+          type: object
+          description: Votre présence dans l'annuaire des marchands.
+          required: [listed, countries, reasons]
+          properties:
+            listed:
+              type: boolean
+            countries:
+              type: array
+              description: Pays de vos zones actives ; avant votre première grille, le pays déclaré à l'inscription.
+              items:
+                type: string
+            reasons:
+              type: array
+              description: Ce qui vous retire de l'annuaire (vide si `listed`).
+              items:
+                type: string
+                enum: [not_verified, inactive, account_disabled, partner_suspended, no_active_zone]
+
+    # ── Zones ───────────────────────────────────────────────────────────
+
+    Zone:
+      type: object
+      required: [country, city, district, fee, currency, delivery_time_hours, code, active]
+      properties:
+        country:
+          type: string
+          enum: [BF, BJ, CI, ML, NE, SN, TG, CG, CM, GA, TD]
+          description: Code ISO à deux lettres, zone franc CFA.
+        city:
+          type: string
+          maxLength: 100
+        district:
+          type: string
+          maxLength: 100
+          description: Commune ou quartier ; chaîne vide = toute la ville.
+        fee:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          description: Tarif en unités de la devise.
+        currency:
+          type: string
+          enum: [XOF, XAF]
+          description: Déduite du pays.
+        delivery_time_hours:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 720
+        code:
+          type: string
+          maxLength: 50
+          description: Votre code de zone, chaîne vide à défaut.
+        active:
+          type: boolean
+          description: "`false` : gardée mais sans effet (annuaire, frais, assignation automatique)."
+    ZoneInput:
+      type: object
+      additionalProperties: false
+      required: [country, city, fee]
+      properties:
+        country:
+          type: string
+          pattern: "^[A-Za-z]{2}$"
+          description: "Code ISO à deux lettres, sans casse : BF, BJ, CI, ML, NE, SN, TG (XOF) ; CG, CM, GA, TD (XAF)."
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        district:
+          type: string
+          maxLength: 100
+          default: ""
+        fee:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          description: Entier JSON (`"1500"` ou `1500.5` refusés).
+        currency:
+          type: string
+          description: Facultative ; si donnée, celle du pays.
+        delivery_time_hours:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 720
+        code:
+          type: string
+          maxLength: 50
+          default: ""
+        active:
+          type: boolean
+          default: true
+    ZonesReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [zones]
+      properties:
+        zones:
+          type: array
+          maxItems: 2000
+          description: La grille complète ; vide pour tout retirer.
+          items:
+            $ref: "#/components/schemas/ZoneInput"
+    ZoneList:
+      type: object
+      required: [object, count, updated_at, updated_by, zones]
+      properties:
+        object:
+          type: string
+          const: zone_list
+        count:
+          type: integer
+        updated_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        updated_by:
+          type: [string, "null"]
+          enum: [api, woura_staff, null]
+        zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/Zone"
+    ShipmentZone:
+      type: object
+      required: [country, city, district, code, fee, currency, delivery_time_hours, match]
+      properties:
+        country:
+          type: string
+        city:
+          type: string
+        district:
+          type: string
+        code:
+          type: string
+        fee:
+          type: integer
+        currency:
+          type: string
+        delivery_time_hours:
+          type: [integer, "null"]
+        match:
+          type: string
+          enum: [district, city]
+          description: "`district` : une commune nommée dans l'adresse ; `city` : la ville entière."
 
     # ── Marchands ───────────────────────────────────────────────────────
 
@@ -4626,7 +4971,7 @@ components:
               $ref: "#/components/schemas/Partnership"
     Partnership:
       type: object
-      required: [id, status, stock_mode, auto_accept, message, response_message, requested_at, responded_at, updated_at]
+      required: [id, status, stock_mode, auto_accept, auto_assign, message, response_message, requested_at, responded_at, updated_at]
       properties:
         id:
           type: string
@@ -4638,6 +4983,14 @@ components:
         auto_accept:
           type: boolean
           description: Les livraisons de ce marchand arrivent déjà `accepted` (réglage du marchand).
+        auto_assign:
+          type: boolean
+          description: |
+            Assignation automatique (réglage du marchand, désactivée par
+            défaut) : une commande qui passe confirmée (par le marchand, son
+            call center ou le client sur WhatsApp), sans livreur, dont la ville
+            est dans vos zones vous est confiée sans clic, au tarif de la zone
+            — sauf course déjà annoncée au client (frais non inclus).
         message:
           type: string
           description: Message de la demande ; chaîne vide pour un partenariat refusé ou résilié.
@@ -4709,6 +5062,7 @@ components:
         - photo_url
         - rescheduled_for
         - statement_id
+        - zone
         - created_at
         - updated_at
         - closed_at
@@ -4802,6 +5156,17 @@ components:
           type: [string, "null"]
           format: uuid
           description: Le relevé COD qui solde cette livraison, `null` tant qu'elle n'est sur aucun relevé (ou si le sien a été annulé).
+        zone:
+          oneOf:
+            - $ref: "#/components/schemas/ShipmentZone"
+            - type: "null"
+          description: |
+            La zone de votre grille qui couvre l'adresse, fixée à
+            l'assignation et relue seulement si l'adresse de livraison change
+            (pas quand vous modifiez votre grille) ; `null` sans grille, sans
+            correspondance, ou si la zone n'est pas dans la devise de la
+            commande. Comparez `zone.fee` à
+            `delivery_fee` pour voir si le marchand a changé votre tarif.
         created_at:
           $ref: "#/components/schemas/DateTime"
         updated_at:
@@ -5391,7 +5756,7 @@ components:
           type: array
           items:
             type: string
-            enum: [status, stock_mode, auto_accept, pickup_address]
+            enum: [status, stock_mode, auto_accept, pickup_address, auto_assign]
         previous_status:
           $ref: "#/components/schemas/PartnershipStatus"
           description: Présent seulement quand le statut a changé d'un statut connu à un autre.
@@ -5555,6 +5920,28 @@ components:
                   $ref: "#/components/schemas/Statement"
                 previous_status:
                   $ref: "#/components/schemas/StatementStatus"
+    ZonesUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: zones.updated
+            data:
+              type: object
+              required: [zones]
+              properties:
+                zones:
+                  type: object
+                  required: [count, updated_at, updated_by]
+                  properties:
+                    count:
+                      type: integer
+                    updated_at:
+                      $ref: "#/components/schemas/DateTime"
+                    updated_by:
+                      type: string
+                      const: woura_staff
     PingEvent:
       allOf:
         - $ref: "#/components/schemas/WebhookEvent"
@@ -5873,10 +6260,12 @@ components:
             Sans `items` seulement : prix de l'article de test unique
             (15 000 par défaut). Ignoré si `items` est donné.
         delivery_fee:
-          type: integer
+          type: [integer, "null"]
           minimum: 0
           maximum: 1000000
-          default: 1500
+          description: |
+            Absent ou `null` : le tarif de la grille de votre bac à sable pour
+            la ville du client (`PUT /zones` avec une clé de test), sinon 1 500.
         delivery_fee_included:
           type: boolean
           default: true
