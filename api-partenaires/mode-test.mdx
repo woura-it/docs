@@ -1,0 +1,62 @@
+---
+title: "Mode test"
+description: "Le bac à sable des clés de test : commandes fictives, aucun effet réel."
+---
+
+## Mode test (bac à sable)
+
+Avec une clé `wk_test_`, vous travaillez dans **votre bac à sable** : un
+marchand fictif (« Boutique de test Woura »), un partenariat accepté avec
+lui, et des commandes fictives. Il vit sur les serveurs de production, mais
+**rien n'y a d'effet réel** : aucun message au client, aucun stock réel, aucun
+argent. Toutes les routes ci-dessus marchent, sur les seules données du bac à
+sable ; les événements partent vers vos points `test`.
+
+Simuler ce que ferait un marchand :
+
+| Méthode | Chemin | Simule |
+|---|---|---|
+| POST | `/test/shipments` | Une commande qui vous est assignée → `shipment.assigned` |
+| POST | `/test/shipments/{id}/cancel` | Le marchand annule (`{"reason"}` facultatif) → `shipment.cancelled` (au journal, `actor: system`) |
+| POST | `/test/shipments/{id}/update` | Le marchand retouche (`address`, `city`, `note`, `items_amount`) → `shipment.updated` |
+| POST | `/test/stock-transfers` | Le marchand vous envoie du stock (`product_name`, `quantity`, `comment`) → `stock_transfer.requested` |
+| POST | `/test/partnership-requests` | Un nouveau marchand fictif vous demande (`merchant_name`, `message`) → `partnership.requested` |
+
+`POST /test/shipments` (tout est facultatif) :
+
+```json
+{
+  "mode": "pickup",
+  "accept_automatically": false,
+  "items": [{"name": "Robe wax", "sku": "RW-38", "quantity": 2, "unit_price": 7500}],
+  "delivery_fee": 1500,
+  "delivery_fee_included": true,
+  "customer": {"name": "Client test", "address": "Fidjrossè, rue 12", "city": "Cotonou", "country": "BJ"},
+  "note": "Appeler avant de passer"
+}
+```
+
+Plafonds par société : 500 commandes de test et 200 transferts de test par
+24 heures, 20 marchands fictifs en tout (`409 sandbox_limit_reached`).
+
+Sans `items`, un article de test au prix `cod_amount` (15 000 par défaut). Le
+téléphone du client est fictif (+999…). En mode `depot`, le stock n'est pas
+contrôlé dans le bac à sable. Les routes `/test/…` répondent
+`403 test_key_required` avec une clé live, et `POST /merchant-invitations`
+n'envoie rien avec une clé de test (même réponse).
+
+## À venir, et questions ouvertes
+
+| Quoi | Lot |
+|---|---|
+| `GET` / `PUT /zones` : votre grille de tarifs par pays et ville | L4 |
+| `GET` / `POST /statements`, `POST /statements/{id}/paid` : relevés COD, et les événements `statement.confirmed` / `statement.disputed` | L5 |
+
+Vos réponses peuvent encore faire évoluer cette API :
+
+1. La liste exacte de vos statuts internes, pour vérifier la correspondance du [statuts](/api-partenaires/livraisons).
+2. Stock en entrepôt chez vous (`depot`), ramassage chez le marchand (`pickup`), ou les deux ?
+3. Preuve de livraison captée : photo, code, signature ?
+4. Reversement COD aujourd'hui : fréquence, moyen, forme du relevé, frais retenus.
+5. Pays et villes couverts, et votre grille de tarifs (fichier).
+6. Volume par jour, nombre de marchands à amener, et contact technique.

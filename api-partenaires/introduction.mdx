@@ -1,0 +1,147 @@
+---
+title: "Introduction"
+description: "Recevoir les commandes de vos marchands Woura dans votre système, et les faire avancer par l'API."
+---
+
+Woura vous transmet les commandes que les marchands vous confient, par webhooks, et vous les faites avancer par l'API : vos livreurs restent dans votre système, le marchand et son client suivent la livraison dans Woura.
+
+<Info>
+  Pas de portail : vos clés vous sont remises par Woura, vous gérez vos webhooks par l'API. La référence de chaque route est dans le groupe **Référence**.
+</Info>
+
+## Principes
+
+- **Vous recevez les commandes chez vous.** Dès qu'un marchand avec qui vous
+  avez un partenariat vous confie une commande, Woura appelle votre webhook
+  (`shipment.assigned`) avec tout ce qu'il faut pour livrer. Vous faites
+  ensuite avancer la livraison par l'API ; la commande du marchand suit.
+- **Une livraison (`shipment`) par commande confiée.** Si le marchand
+  réassigne la commande ailleurs, votre livraison passe `cancelled` et
+  n'évolue plus ; si la commande vous revient, une nouvelle livraison est
+  créée.
+- **C'est Woura qui prévient le client final** (WhatsApp, e-mail) à chaque
+  changement de statut. Vous n'avez rien à envoyer au client.
+- **Paiement à la livraison (COD)** : `cod_amount` est ce que votre livreur
+  encaisse à la porte. Il suit les retouches du marchand et les paiements en
+  ligne arrivés après l'assignation (`shipment.updated`). Woura ne déplace
+  aucun argent ; vous reversez au marchand.
+- **Une seule société par compte.** Vous transmettez le nom et le téléphone du
+  livreur que vous affectez ; il n'a pas de compte Woura.
+- **Vous ne voyez que vos marchands.** Aucune route ne liste, ne cherche ni ne
+  confirme l'existence d'un marchand Woura. Vous voyez une boutique à travers
+  un partenariat — accepté, suspendu, ou une demande que le marchand vous a
+  envoyée.
+- Champs en anglais, montants en **unités de la devise** (le franc CFA n'a pas
+  de décimales : `15000` = 15 000 F ; un montant non entier a deux décimales),
+  dates en **ISO 8601 avec fuseau** (`2026-10-25T14:00:00+01:00` ; une date sans
+  fuseau est lue en UTC).
+
+## Accès
+
+| | |
+|---|---|
+| Adresse | `https://app.woura.africa/api/partner/v1/` |
+| Authentification | `Authorization: Bearer wk_live_…` ou `Bearer wk_test_…` |
+| Format | JSON seulement (`Content-Type: application/json`, sinon `415`) |
+| Idempotence | En-tête `Idempotency-Key` sur tout `POST` (sur cette page) |
+| Limite de débit | 300 requêtes par minute et par clé ; 30 invitations de marchands par heure ; 10 pings de webhook par minute. Au-delà : `429 rate_limited` et `Retry-After` (secondes) |
+| Pagination | `page` (à partir de 1) et `page_size` (20 par défaut, 100 au plus). Réponse : `{"count", "next", "previous", "results"}` |
+
+Les chemins répondent avec ou sans barre finale (`/shipments` comme
+`/shipments/`).
+
+## Clés et environnements
+
+Woura crée vos clés et vous les transmet. **Le secret n'est montré qu'une
+fois** à sa création : Woura n'en garde que le début (préfixe) et une
+empreinte. Une clé perdue se remplace : demandez-en une nouvelle, l'ancienne
+est révoquée.
+
+| | Clé de test `wk_test_…` | Clé live `wk_live_…` |
+|---|---|---|
+| Quand | tout de suite | après la vérification de votre société par Woura |
+| Ce qu'elle voit | votre **bac à sable** ([mode test](/api-partenaires/mode-test)) : un marchand fictif, des commandes fictives, aucun effet réel | les vraies commandes de vos marchands |
+| Webhooks | vos points `test` | vos points `live` |
+
+Une clé répond `401 invalid_api_key` si elle est inconnue ou révoquée, et
+`403` si votre société est désactivée (`company_inactive`), si votre compte
+partenaire est suspendu (`partner_suspended`), ou — clé live — si votre
+société n'est plus vérifiée (`company_not_verified`). Elle n'ouvre que
+`/api/partner/v1/`.
+
+## Erreurs
+
+Toujours le même format :
+
+```json
+{
+  "code": "transition_not_allowed",
+  "message": "Passage de LIVREE à EN_COURS non permis.",
+  "details": {}
+}
+```
+
+`code` est stable : branchez-vous dessus. `message` est lisible et peut
+changer. `details` donne les erreurs par champ (`validation_error`) ; un champ
+imbriqué s'écrit `items[1].quantity` ou `customer.name` :
+
+```json
+{"code": "validation_error", "message": "…",
+ "details": {"items[1].quantity": ["Assurez-vous que cette valeur est supérieure ou égale à 1."]}}
+```
+
+| HTTP | `code` | Quand |
+|---|---|---|
+| 400 | `validation_error` | Champ manquant, invalide ou **inconnu** (une faute de frappe est refusée, pas ignorée), corps qui n'est pas un objet JSON, filtre mal formé, ou refus du changement de statut par la commande (stock insuffisant chez vous en mode dépôt, date passée) |
+| 400 | `invalid_url` | URL de webhook refusée ([webhooks](/api-partenaires/webhooks)) |
+| 401 | `invalid_api_key` | Clé absente, mal formée, inconnue ou révoquée |
+| 403 | `company_inactive`, `partner_suspended`, `company_not_verified` | Voir sur cette page |
+| 403 | `test_key_required` | Route `/test/…` appelée avec une clé live |
+| 404 | `not_found` | Ressource inconnue **ou pas à vous** (même réponse) |
+| 405 | `method_not_allowed` | Méthode non permise sur la route |
+| 409 | `transition_not_allowed` | Statut non permis depuis le statut actuel ([statuts](/api-partenaires/livraisons)) |
+| 409 | `shipment_closed` | Livraison close (réassignée, refusée, commande remise en attente) |
+| 409 | `idempotency_key_reused` | Même `Idempotency-Key`, autre requête |
+| 409 | `partnership_not_pending` | Répondre à une demande qui n'est plus en attente |
+| 409 | `merchant_plan_limit` | Le plan du marchand n'autorise pas un livreur de plus |
+| 409 | `transfer_not_pending` | Répondre à un transfert qui n'est plus en attente |
+| 409 | `too_many_endpoints` | Plus de 10 points de webhook dans un environnement |
+| 409 | `endpoint_disabled` | Ping ou renvoi vers un point désactivé |
+| 409 | `sandbox_limit_reached` | Plafond du bac à sable atteint ([mode test](/api-partenaires/mode-test)) |
+| 409 | `conflict` | Autre refus métier (stock insuffisant pour un retour, par exemple) |
+| 415 | `unsupported_media_type` | Corps qui n'est pas du JSON |
+| 429 | `rate_limited` | Trop de requêtes (`Retry-After`) |
+| 500 | `internal_error` | Erreur de Woura : réessayez avec la même `Idempotency-Key` |
+
+**Une erreur n'écrit rien** : ni la livraison, ni la commande ne changent.
+
+## Idempotence
+
+Envoyez un identifiant unique (UUID par exemple, 255 caractères au plus) dans
+`Idempotency-Key` sur chaque `POST`. Si vous renvoyez **la même requête avec la
+même clé** (coupure réseau, délai dépassé), Woura rend la réponse du premier
+envoi sans rien refaire, avec l'en-tête `Idempotent-Replayed: true`. La même
+clé avec une autre méthode, un autre chemin ou un autre corps est refusée
+(`409 idempotency_key_reused`).
+
+- Une clé d'idempotence vaut pour **votre clé API**, pendant **7 jours**. Le
+  chemin est comparé sans barre finale (`/shipments/{id}/events` et
+  `/shipments/{id}/events/` sont la même requête).
+- Seules les réponses réussies (2xx) sont gardées : une requête refusée (400,
+  409…) peut être corrigée et renvoyée avec la même clé.
+- Deux envois simultanés de la même clé ne font le travail qu'une fois.
+
+## Démarrer
+
+1. Recevez votre clé de test de Woura ; `GET /me` doit répondre `200`.
+2. Enregistrez un point de webhook `test` (`POST /webhook-endpoints`), gardez
+   le `secret`, vérifiez la signature avec `POST /webhook-endpoints/{id}/ping`.
+3. Créez une commande de test (`POST /test/shipments`), recevez
+   `shipment.assigned`, acceptez-la, faites-la avancer jusqu'à `delivered`.
+   Essayez un refus, un report, l'annulation et la modification par le
+   marchand, un transfert de stock.
+4. Dédoublonnez sur `id`, renvoyez toujours le même `Idempotency-Key` pour un
+   même geste, et gérez les `409`.
+5. Une fois votre société vérifiée, Woura vous remet une clé live ;
+   enregistrez vos points `live`, puis envoyez votre lien d'invitation à vos
+   e-commerçants.

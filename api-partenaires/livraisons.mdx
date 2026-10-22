@@ -1,0 +1,225 @@
+---
+title: "Livraisons"
+description: "La livraison (shipment), ses statuts et les routes qui la font avancer."
+---
+
+## La livraison (`shipment`)
+
+```json
+{
+  "id": "6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40",
+  "object": "shipment",
+  "status": "accepted",
+  "mode": "pickup",
+  "active": true,
+  "order_id": "393093856815339",
+  "order_number": "#0412",
+  "merchant": {
+    "id": "b4b6c1d2-…",
+    "name": "Boutique Awa",
+    "phone": "+22997000000",
+    "country": "BJ",
+    "pickup_address": "Marché Dantokpa, allée 4, Cotonou"
+  },
+  "customer": {
+    "name": "Koffi Mensah",
+    "phone": "+22996000000",
+    "address": "Fidjrossè, rue 12",
+    "city": "Cotonou",
+    "country": "BJ",
+    "details": "Portail bleu après la pharmacie"
+  },
+  "items": [
+    {"name": "Robe wax", "variant": "Taille 38", "sku": "RW-38", "quantity": 2,
+     "unit_price": 7500, "product_id": "8812734"}
+  ],
+  "cod_amount": 15000,
+  "delivery_fee": 1500,
+  "delivery_fee_included": true,
+  "currency": "XOF",
+  "payment": {"status": "unpaid", "paid_amount": 0},
+  "note": "Appeler avant de passer",
+  "external_reference": "EXP-2026-000123",
+  "rider": {"name": "Ibrahim", "phone": "+22990000000"},
+  "reason": "",
+  "photo_url": "",
+  "rescheduled_for": null,
+  "created_at": "2026-10-22T09:12:03+01:00",
+  "updated_at": "2026-10-22T09:15:40+01:00",
+  "closed_at": null,
+  "events": [
+    {"status": "assigned", "previous_status": "", "reason": "", "actor": "merchant",
+     "occurred_at": "2026-10-22T09:12:03+01:00", "recorded_at": "2026-10-22T09:12:03+01:00"},
+    {"status": "accepted", "previous_status": "assigned", "reason": "", "actor": "api",
+     "occurred_at": "2026-10-22T09:15:40+01:00", "recorded_at": "2026-10-22T09:15:40+01:00"}
+  ]
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `id` | Identifiant de la livraison : c'est lui que prennent les routes `/shipments/{id}` |
+| `mode` | `depot` : vous détenez le stock du marchand dans votre entrepôt ([marchands et stock](/api-partenaires/marchands-et-stock)). `pickup` : vous passez prendre le colis chez le marchand, à `merchant.pickup_address`. Fixé à l'assignation |
+| `active` | `false` quand la livraison est close (réassignation, refus, commande remise en attente) |
+| `order_id`, `order_number` | La commande chez Woura, et son numéro tel que le marchand le voit |
+| `merchant` | La boutique. `pickup_address` : où passer prendre les colis (mode `pickup`) |
+| `customer.address` | L'adresse saisie (peut être vide) ; `details` : les précisions de livraison — souvent l'adresse complète pour une commande WhatsApp ou saisie à la main. `country` tel que saisi (code ISO 2 le plus souvent) |
+| `items` | Les articles. `product_id` : l'identifiant Woura du produit (celui du stock, [marchands et stock](/api-partenaires/marchands-et-stock)), vide pour un article sans fiche produit |
+| `cod_amount` | Ce que votre livreur encaisse auprès du client, frais de livraison compris s'ils sont à la charge du client. `0` si le client a déjà tout payé en ligne |
+| `delivery_fee` | Vos frais de livraison pour cette commande (saisis par le marchand, ou les frais réels que vous déclarez avec `delivered`) |
+| `delivery_fee_included` | `true` : le marchand vous paie la course (elle est dans son prix). `false` : le client vous la paie en plus, elle est déjà dans `cod_amount` |
+| `currency` | Devise de la commande (`XOF`, `XAF`…) |
+| `payment` | Paiement en ligne reçu par le marchand : `unpaid`, `partially_paid` (acompte : `paid_amount`) ou `paid` |
+| `rider` | Le livreur que vous avez affecté |
+| `reason` | Motif du dernier statut (refus, échec, report, annulation) |
+| `rescheduled_for` | Nouvelle date de passage (statut `rescheduled`) |
+| `closed_at` | Date de clôture (livraison inactive). Une fois close, la livraison est **figée** : client, articles, montants et note restent ceux que vous connaissiez à la clôture ; les retouches faites ensuite par le marchand (pour un autre livreur) ne vous parviennent pas |
+| `events` | Journal complet, du plus ancien au plus récent. `actor` : `merchant`, `delivery_company` (vous, depuis l'app Woura Agent), `api` (vous, par l'API), `call_center`, `woura_staff`, `system`. `occurred_at` : ce que vous avez déclaré ; `recorded_at` : la réception par Woura |
+
+## Statuts
+
+| `status` | Qui le pose | Ce que devient la commande chez le marchand | Ce que Woura fait |
+|---|---|---|---|
+| `assigned` | marchand ou call center | inchangée | webhook `shipment.assigned` |
+| `accepted` | vous, ou automatiquement | inchangée | |
+| `refused` | vous, **motif obligatoire** | revient sans livreur, statut inchangé | le marchand est prévenu |
+| `picked_up` | vous (mode `pickup` seulement) | en livraison | le client est prévenu |
+| `in_transit` | vous | en livraison | le client est prévenu |
+| `delivered` | vous | livrée | stock, dépenses, client prévenu |
+| `failed` | vous, **motif obligatoire** | client injoignable | le marchand est prévenu |
+| `rescheduled` | vous, **motif et date future obligatoires** | programmée | relance automatique à la date |
+| `returned` | vous | retournée | stock restitué |
+| `cancelled` | vous (client qui refuse le colis, **motif obligatoire**), ou le marchand | annulée | stock restitué |
+
+Le marchand règle, partenariat par partenariat, l'**acceptation
+automatique** (activée par défaut) : la livraison arrive alors directement en
+`accepted`. Sinon elle arrive en `assigned` et attend votre réponse. Déclarer
+`picked_up`, `in_transit` ou `delivered` vaut acceptation.
+
+## Passages permis
+
+| Depuis | Vers |
+|---|---|
+| `assigned` | `accepted`, `refused`, `picked_up`, `in_transit`, `delivered`, `failed`, `rescheduled`, `cancelled` |
+| `accepted` | `accepted`\*, `refused`, `picked_up`, `in_transit`, `delivered`, `failed`, `rescheduled`, `cancelled` |
+| `picked_up` | `picked_up`\*, `in_transit`, `delivered`, `failed`, `rescheduled`, `returned`, `cancelled` |
+| `in_transit` | `in_transit`\*, `delivered`, `failed`, `rescheduled`, `returned`, `cancelled` |
+| `failed` | `failed`\*, `in_transit`, `delivered`, `rescheduled`, `returned`, `cancelled` |
+| `rescheduled` | `rescheduled`\*, `picked_up`, `in_transit`, `delivered`, `failed`, `returned`, `cancelled` |
+| `delivered`, `refused`, `returned`, `cancelled` | — (statuts finaux) |
+
+\* Renvoyer le statut actuel est une **mise à jour** : livreur affecté,
+nouvelle date de report, nouvel échec avec un autre motif. Sans rien de neuf,
+rien n'est écrit (`200`).
+
+- `refused` n'est possible qu'avant la prise en charge : une fois le colis en
+  main, utilisez `cancelled` (client qui refuse) ou `returned`.
+- `picked_up` n'existe qu'en mode `pickup`.
+- `delivered`, `returned` ou `cancelled` renvoyé une seconde fois répond `200`
+  sans rien changer. Après `refused`, la livraison est close : tout nouvel
+  envoi répond `409 shipment_closed` (sauf le rejeu de la même
+  `Idempotency-Key`).
+- En mode `depot`, `in_transit` exige que vous déteniez chez Woura le stock
+  des articles ([marchands et stock](/api-partenaires/marchands-et-stock)) ; sinon `400 validation_error`. À `delivered`, il est
+  débité de votre stock.
+
+**Le marchand peut aussi agir sur la commande** : s'il l'annule, la livre
+lui-même ou la marque retournée, votre livraison passe `cancelled`,
+`delivered` ou `returned` (`actor`: `merchant`), et vous recevez un webhook
+([webhooks](/api-partenaires/webhooks)).
+
+## Points d'accès — votre société et vos livraisons
+
+## `GET /me`
+
+```json
+{
+  "id": "2ba12b9d-…", "object": "delivery_company", "name": "Livraisons Express",
+  "environment": "live", "verified": true, "country": "BJ", "programs": ["delivery"],
+  "api_key": {"prefix": "wk_live_AbCdEfGh1234", "created_at": "2026-10-22T10:00:00+01:00"},
+  "invitation_link": "https://woura.africa/delivery-men/invite/Xk2…",
+  "rate_limit": "300/min"
+}
+```
+
+`invitation_link` : votre lien d'invitation ([marchands et stock](/api-partenaires/marchands-et-stock)), avec une clé live
+seulement (`null` en test).
+
+## `GET /shipments`
+
+Liste paginée de vos livraisons.
+
+| Paramètre | Sens |
+|---|---|
+| `status` | Un ou plusieurs statuts séparés par des virgules (`in_transit,failed`) |
+| `updated_since` | Modifiées depuis cette date (ISO 8601, **encodée dans l'URL** : `+01:00` s'écrit `%2B01:00`). Toute modification compte, y compris celles du marchand qui émettent `shipment.updated`. Pour qui ne reçoit pas de webhook, ou pour rattraper |
+| `merchant` | Identifiant d'une boutique (`merchant.id`) |
+| `active` | `true` (défaut) : les livraisons en vigueur ; `false` : les closes ; `all` : toutes |
+| `ordering` | `-updated_at` (défaut), `updated_at`, `-created_at`, `created_at` |
+
+Pour synchroniser par interrogation : `?updated_since=<dernière date vue>&ordering=updated_at&active=all`.
+
+## `GET /shipments/{id}`
+
+Une livraison avec son journal. `404` si elle n'est pas à vous.
+
+## `POST /shipments/{id}/accept`
+
+```json
+{"rider_name": "Ibrahim", "rider_phone": "+22990000000"}
+```
+
+Champs facultatifs. Réponse `200` : la livraison.
+
+## `POST /shipments/{id}/refuse`
+
+```json
+{"reason": "Zone non couverte"}
+```
+
+`reason` obligatoire. La commande revient au marchand sans livreur ; il est
+prévenu et en choisit un autre. Votre livraison est close (`active: false`).
+
+## `POST /shipments/{id}/events`
+
+Nouveau statut, ou mise à jour du statut actuel.
+
+```json
+{
+  "status": "delivered",
+  "reason": "",
+  "occurred_at": "2026-10-22T16:40:00+01:00",
+  "rider_name": "Ibrahim",
+  "rider_phone": "+22990000000",
+  "photo_url": "https://cdn.livraisons-express.example/pod/123.jpg",
+  "delivery_fee": 1500,
+  "rescheduled_for": null,
+  "note": "Remis à la sœur du client",
+  "external_reference": "EXP-2026-000123"
+}
+```
+
+| Champ | Obligatoire | Sens |
+|---|---|---|
+| `status` | oui | Voir sur cette page (pas `assigned`) |
+| `reason` | `refused`, `failed`, `rescheduled`, `cancelled` | Motif lisible par le marchand |
+| `occurred_at` | non | Quand c'est arrivé chez vous (défaut : réception) |
+| `rider_name`, `rider_phone` | non | Livreur affecté ; une chaîne vide l'efface |
+| `photo_url` | non | Preuve (photo), URL publique `http` ou `https` (`https` conseillé) |
+| `delivery_fee` | avec `delivered` seulement | Frais réels, entier de 0 à 10 000 000 ; ils deviennent la dépense de livraison du marchand. Refusé (`400`) avec un autre statut |
+| `rescheduled_for` | `rescheduled` | Date **future** du nouveau passage |
+| `note` | non | Ajoutée aux notes de la commande |
+| `external_reference` | non | Votre numéro de suivi |
+
+Réponses : `201` (écrit), `200` (rien de neuf, ou rejeu de la même clé
+d'idempotence), `400`, `404`, `409`.
+
+## `PATCH /shipments/{id}`
+
+```json
+{"external_reference": "EXP-2026-000123"}
+```
+
+Votre numéro de suivi, affiché au marchand. Modifiable à tout moment, même
+une fois la livraison terminée ou close. Ce n'est pas un statut : rien
+n'est ajouté au journal.

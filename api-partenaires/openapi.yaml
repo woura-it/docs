@@ -1,0 +1,5011 @@
+openapi: 3.1.0
+
+info:
+  title: API partenaires Woura — livraison
+  version: "2026-10-22"
+  description: |
+    L'API des sociétés de livraison partenaires de Woura : recevoir les
+    commandes que les marchands vous confient (livraisons), déclarer leurs
+    statuts, répondre aux demandes de partenariat, gérer le stock en dépôt et
+    recevoir des webhooks signés.
+
+    **Authentification.** `Authorization: Bearer wk_live_…` ou
+    `Bearer wk_test_…`. Les clés sont créées par Woura ; une clé live ne
+    fonctionne que pour une société vérifiée. Une clé de test agit dans un bac
+    à sable propre à votre société (commandes fictives, aucun message envoyé,
+    aucun stock réel déplacé) ; les routes `/test/…` lui sont réservées.
+
+    **Format.** Corps en JSON (`Content-Type: application/json`), sinon `415`.
+    Le corps doit être un objet JSON (`400 validation_error` sinon), et un
+    champ inconnu est refusé (`400 validation_error`), objets imbriqués
+    compris. Champs en anglais. Montants en unités de la devise : entier quand
+    le montant est entier (le franc CFA n'a pas de décimales : `15000` =
+    15 000 F), sinon nombre à deux décimales. Dates en ISO 8601 avec fuseau ;
+    une date envoyée sans fuseau est lue en UTC (envoyez de préférence le
+    fuseau).
+
+    **Barre finale.** Chaque route répond aussi avec une barre finale
+    (`/shipments/` comme `/shipments`), sans redirection.
+
+    **Listes.** Paginées par `page` et `page_size` (20 par défaut, 100 au
+    plus ; au-delà, 100) ; réponse `{count, next, previous, results}`. Une page
+    au-delà de la dernière répond `404 not_found`.
+
+    **Limites de débit.** 300 requêtes par minute et par clé, toutes routes
+    confondues (la limite appliquée est rendue par `GET /me`, `rate_limit`) ;
+    en plus, 30 par heure et par clé sur `POST /merchant-invitations`, et 10
+    par minute et par clé sur `POST /webhook-endpoints/{id}/ping`. Au-delà :
+    `429 rate_limited` avec `Retry-After` (secondes).
+
+    **Idempotence.** Envoyez un en-tête `Idempotency-Key` (255 caractères au
+    plus) sur chaque `POST`. Le même envoi avec la même clé rend la réponse du
+    premier, sans rien refaire, avec l'en-tête `Idempotent-Replayed: true`. La
+    même clé avec une autre méthode, un autre chemin ou un autre corps répond
+    `409 idempotency_key_reused` (le chemin est comparé sans barre finale :
+    `/x` et `/x/` sont la même requête). Seules les réponses 2xx sont gardées
+    (une requête refusée peut être corrigée et renvoyée avec la même clé),
+    pendant 7 jours. Les clés sont propres à chaque clé API. L'en-tête n'est
+    lu que sur une route qui accepte `POST`.
+
+    **Erreurs.** Toujours `{"code", "message", "details"}` : `code` est
+    stable, en anglais ; `message` est lisible, en français (les messages de
+    validation génériques suivent l'en-tête `Accept-Language`, français par
+    défaut) ; `details` donne les erreurs par champ, à plat, avec les noms
+    publics (`reason`, `items[1].quantity`, `customer.name`). Une méthode non
+    prévue sur une route répond
+    `405 method_not_allowed`. Une adresse inconnue sous `/api/partner/v1/`
+    (identifiant qui n'est pas un UUID compris) répond `404 not_found`
+    (« Route inconnue. »), sans vérifier la clé.
+
+servers:
+  - url: https://app.woura.africa/api/partner/v1
+    description: Production (clés live et clés de test)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Société
+    description: Votre société et la clé utilisée.
+  - name: Marchands
+    description: |
+      Les marchands Woura avec lesquels votre société a un partenariat, et les
+      invitations. Aucune route ne liste, ne cherche ni ne confirme un
+      marchand sans partenariat. Le nom, le téléphone, le pays et l'adresse de
+      ramassage d'une boutique ne sont donnés que pour un partenariat en
+      attente, accepté ou suspendu ; un partenariat refusé ou résilié ne
+      montre que l'identifiant de la boutique et le partenariat.
+  - name: Livraisons
+    description: |
+      Une livraison (`shipment`) par commande confiée à votre société. Si la
+      commande est réassignée, son livreur retiré ou remise en attente, votre
+      livraison est close (`active: false`, et `cancelled` si elle était en
+      cours) ; si la commande vous revient, une nouvelle livraison est créée.
+      Ce que vous déclarez fait suivre la commande du marchand par le même
+      chemin que ses propres changements de statut (messages au client, stock,
+      dépenses).
+  - name: Stock
+    description: |
+      Le stock que les marchands vous confient en dépôt (mode `depot`) :
+      transferts du marchand vers votre dépôt, niveaux de stock, retours de
+      votre dépôt vers le marchand.
+  - name: Webhooks
+    description: |
+      Vos points de réception (`webhook_endpoint`), le journal des envois
+      (`webhook_delivery`, gardé 30 jours) et les événements que Woura vous
+      envoie (section `webhooks`). Les points sont propres à l'environnement
+      de la clé : un point créé avec une clé de test ne reçoit que les
+      événements du bac à sable, un point live que ceux du live.
+
+      Aucun webhook ne part vers une société supprimée, désactivée, dont le
+      compte est désactivé ou le compte partenaire suspendu, ni en live vers
+      une société qui n'est plus vérifiée ; un envoi en attente est alors
+      abandonné (`failed`).
+  - name: Mode test
+    description: |
+      Routes réservées aux clés de test (`wk_test_…`) : elles simulent, dans
+      votre bac à sable, ce qu'un marchand ferait (confier une commande,
+      l'annuler, la modifier, envoyer du stock, demander un partenariat). Avec
+      une clé live : `403 test_key_required`.
+
+paths:
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Société
+  # ══════════════════════════════════════════════════════════════════════
+
+  /me:
+    get:
+      operationId: getCompany
+      tags: [Société]
+      summary: Votre société
+      description: |
+        La société de la clé et l'environnement de la clé. `id`, `name`,
+        `verified` et `country` sont ceux de votre société, que la clé soit
+        live ou de test.
+
+        `invitation_link` : l'adresse à envoyer vous-même à vos e-commerçants
+        déjà sur Woura ; le marchand l'ouvre dans l'application, voit le nom de
+        votre société et accepte : le partenariat est accepté d'office. `null`
+        avec une clé de test.
+
+        `rate_limit` : la limite de débit réellement appliquée à chaque clé.
+      responses:
+        "200":
+          description: Votre société.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+              example:
+                id: 3f6b2c1e-8a47-4d2b-9c51-7e0a4b9d2f13
+                object: delivery_company
+                name: Livraisons Express
+                environment: live
+                verified: true
+                country: BJ
+                programs: [delivery]
+                api_key:
+                  prefix: wk_live_Hq3T9xLm2Pz7
+                  created_at: "2026-10-20T08:30:12.402117+00:00"
+                invitation_link: https://woura.africa/delivery-men/invite/q7Xk2mN9pL4vR8sT1wY6zA3bC5dE0fGh
+                rate_limit: 300/min
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Marchands
+  # ══════════════════════════════════════════════════════════════════════
+
+  /merchants:
+    get:
+      operationId: listMerchants
+      tags: [Marchands]
+      summary: Lister vos marchands
+      description: |
+        Les boutiques avec lesquelles votre société a un partenariat, quel que
+        soit son statut, la demande la plus récente d'abord. Avec une clé de
+        test : les boutiques de votre bac à sable.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: |
+            Statuts du partenariat, séparés par des virgules
+            (`status=pending,accepted`). Un statut inconnu répond `400`.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/PartnershipStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de marchands.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedMerchants"
+              example:
+                count: 2
+                next: null
+                previous: null
+                results:
+                  - id: 0d7c4e2a-9b13-4f6e-8a25-c1e9f3b7d064
+                    name: Chez Awa Couture
+                    phone: "+22961000000"
+                    country: BJ
+                    pickup_address: ""
+                    partnership:
+                      id: 5a2e8c1f-7d34-4b9a-a6e0-3f8b1c5d9e27
+                      status: pending
+                      stock_mode: depot
+                      auto_accept: true
+                      message: Bonjour, pouvez-vous livrer nos commandes à Cotonou ?
+                      response_message: ""
+                      requested_at: "2026-10-22T10:04:51.733902+00:00"
+                      responded_at: null
+                      updated_at: "2026-10-22T10:04:51.733902+00:00"
+                  - id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                    phone: "+22997000000"
+                    country: BJ
+                    pickup_address: Marché Dantokpa, allée 4, Cotonou
+                    partnership:
+                      id: e1c7a9f4-2b6d-4e3a-8f05-9d4c7b2a1e68
+                      status: accepted
+                      stock_mode: pickup
+                      auto_accept: false
+                      message: Invitation de Livraisons Express acceptée par le marchand.
+                      response_message: ""
+                      requested_at: "2026-10-20T14:22:08.115630+00:00"
+                      responded_at: "2026-10-20T14:22:08.115204+00:00"
+                      updated_at: "2026-10-21T07:45:19.208311+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchants/{shop_id}:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    get:
+      operationId: getMerchant
+      tags: [Marchands]
+      summary: Un marchand
+      description: |
+        Une boutique et son partenariat avec votre société. Une boutique sans
+        partenariat avec vous répond `404`, comme une boutique inexistante.
+      responses:
+        "200":
+          description: Le marchand.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+              examples:
+                accepte:
+                  summary: Partenariat accepté
+                  value:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                    phone: "+22997000000"
+                    country: BJ
+                    pickup_address: Marché Dantokpa, allée 4, Cotonou
+                    partnership:
+                      id: e1c7a9f4-2b6d-4e3a-8f05-9d4c7b2a1e68
+                      status: accepted
+                      stock_mode: pickup
+                      auto_accept: false
+                      message: Invitation de Livraisons Express acceptée par le marchand.
+                      response_message: ""
+                      requested_at: "2026-10-20T14:22:08.115630+00:00"
+                      responded_at: "2026-10-20T14:22:08.115204+00:00"
+                      updated_at: "2026-10-21T07:45:19.208311+00:00"
+                refuse:
+                  summary: Partenariat refusé (détails masqués)
+                  value:
+                    id: 0d7c4e2a-9b13-4f6e-8a25-c1e9f3b7d064
+                    partnership:
+                      id: 5a2e8c1f-7d34-4b9a-a6e0-3f8b1c5d9e27
+                      status: refused
+                      stock_mode: depot
+                      auto_accept: true
+                      message: ""
+                      response_message: Nous ne couvrons pas encore Parakou.
+                      requested_at: "2026-10-22T10:04:51.733902+00:00"
+                      responded_at: "2026-10-22T10:31:02.950418+00:00"
+                      updated_at: "2026-10-22T10:31:02.951077+00:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchants/{shop_id}/accept:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: acceptMerchant
+      tags: [Marchands]
+      summary: Accepter une demande de partenariat
+      description: |
+        Accepte une demande de partenariat en attente (`pending`). `message`
+        (seul champ accepté) devient la réponse au marchand
+        (`partnership.response_message`).
+
+        Refusé (`409 merchant_plan_limit`) si la boutique a atteint le nombre
+        de livreurs permis par son plan. Un partenariat qui n'est pas en
+        attente répond `409 partnership_not_pending`.
+
+        L'événement `partnership.updated` part vers vos webhooks.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnershipAcceptRequest"
+            example:
+              message: Bienvenue chez Livraisons Express. Ramassage chaque jour à 10 h.
+      responses:
+        "200":
+          description: Le marchand, partenariat accepté.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+              example:
+                id: 0d7c4e2a-9b13-4f6e-8a25-c1e9f3b7d064
+                name: Chez Awa Couture
+                phone: "+22961000000"
+                country: BJ
+                pickup_address: ""
+                partnership:
+                  id: 5a2e8c1f-7d34-4b9a-a6e0-3f8b1c5d9e27
+                  status: accepted
+                  stock_mode: depot
+                  auto_accept: true
+                  message: Bonjour, pouvez-vous livrer nos commandes à Cotonou ?
+                  response_message: Bienvenue chez Livraisons Express. Ramassage chaque jour à 10 h.
+                  requested_at: "2026-10-22T10:04:51.733902+00:00"
+                  responded_at: "2026-10-22T10:31:02.950418+00:00"
+                  updated_at: "2026-10-22T10:31:02.951077+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/PartnershipAcceptConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchants/{shop_id}/refuse:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: refuseMerchant
+      tags: [Marchands]
+      summary: Refuser une demande de partenariat
+      description: |
+        Refuse une demande de partenariat en attente (`pending`). `reason`
+        (seul champ accepté) devient la réponse au marchand
+        (`partnership.response_message`). Une fois refusé, le partenariat ne
+        montre plus que l'identifiant de la boutique.
+
+        Un partenariat qui n'est pas en attente répond
+        `409 partnership_not_pending`. L'événement `partnership.updated` part
+        vers vos webhooks.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnershipRefuseRequest"
+            example:
+              reason: Nous ne couvrons pas encore Parakou.
+      responses:
+        "200":
+          description: Le marchand, partenariat refusé (détails de la boutique masqués).
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+              example:
+                id: 0d7c4e2a-9b13-4f6e-8a25-c1e9f3b7d064
+                partnership:
+                  id: 5a2e8c1f-7d34-4b9a-a6e0-3f8b1c5d9e27
+                  status: refused
+                  stock_mode: depot
+                  auto_accept: true
+                  message: ""
+                  response_message: Nous ne couvrons pas encore Parakou.
+                  requested_at: "2026-10-22T10:04:51.733902+00:00"
+                  responded_at: "2026-10-22T10:31:02.950418+00:00"
+                  updated_at: "2026-10-22T10:31:02.951077+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/PartnershipRefuseConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchant-invitations:
+    post:
+      operationId: createMerchantInvitation
+      tags: [Marchands]
+      summary: Inviter un marchand par e-mail ou téléphone
+      description: |
+        Invite un e-commerçant déjà sur Woura à travailler avec votre société,
+        à partir de son e-mail **ou** de son téléphone (l'un des deux, pas les
+        deux).
+
+        La réponse est **toujours la même** (`202`), quel que soit le contact :
+        la recherche du compte et l'envoi se font après la réponse. Vous ne
+        savez pas si un compte correspond, ni s'il a été prévenu. Un marchand
+        trouvé reçoit une notification (dans l'application, push et e-mail) et
+        accepte ou refuse dans l'application. Rien ne part si le contact ne
+        correspond à aucun marchand, si toutes ses boutiques sont déjà reliées
+        à votre société, ou s'il a déjà une invitation de votre part en cours.
+        Un même contact n'est invité qu'une fois par 24 heures : une nouvelle
+        demande dans ce délai rend le même `id` et n'envoie rien. Une
+        invitation vaut 30 jours.
+
+        Vous n'apprenez rien avant l'acceptation ; vous recevez alors
+        `merchant_invitation.accepted` et `partnership.updated`. Un refus ne
+        vous est pas signalé.
+
+        Avec une clé de test : aucune recherche, aucun envoi, même réponse.
+
+        Limite propre à cette route : 30 requêtes par heure et par clé, en plus
+        de la limite générale.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantInvitationRequest"
+            examples:
+              email:
+                summary: Par e-mail
+                value:
+                  email: awa.couture@example.com
+              telephone:
+                summary: Par téléphone
+                value:
+                  phone: "+229 97 11 22 33"
+      responses:
+        "202":
+          description: Invitation prise en compte (même réponse dans tous les cas).
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantInvitation"
+              example:
+                id: f0a6c3e9-1b4d-4a7f-8c2e-5d9b1e3a7c40
+                object: merchant_invitation
+                status: accepted_for_processing
+                message: Si un compte marchand Woura correspond à ce contact, il a reçu l'invitation. Vous serez prévenu s'il l'accepte.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Livraisons
+  # ══════════════════════════════════════════════════════════════════════
+
+  /shipments:
+    get:
+      operationId: listShipments
+      tags: [Livraisons]
+      summary: Lister vos livraisons
+      description: |
+        Les livraisons de votre société. Par défaut, les livraisons actives
+        seulement (`active=true`), la dernière modifiée d'abord. Avec une clé de
+        test : les livraisons de votre bac à sable seulement.
+
+        Pour vous synchroniser sans webhooks, interrogez avec
+        `updated_since` = la date de votre dernier passage.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: |
+            Statuts, séparés par des virgules (`status=in_transit,failed`). Un
+            statut inconnu répond `400`.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/ShipmentStatus"
+        - name: updated_since
+          in: query
+          required: false
+          description: |
+            Livraisons modifiées à cette date ou après (`updated_at` ≥ ;
+            `updated_at` avance aussi quand `shipment.updated` part),
+            ISO 8601. Une date illisible répond `400`.
+          schema:
+            type: string
+            format: date-time
+          example: "2026-10-22T08:00:00+00:00"
+        - name: merchant
+          in: query
+          required: false
+          description: Identifiant de la boutique (UUID). Un identifiant mal formé répond `400`.
+          schema:
+            type: string
+            format: uuid
+        - name: active
+          in: query
+          required: false
+          description: |
+            `true` (ou `1`) : livraisons actives ; `false` (ou `0`) :
+            livraisons closes ; `all` : toutes. Insensible à la casse. Toute
+            autre valeur répond `400`.
+          schema:
+            type: string
+            enum: ["true", "false", "1", "0", all]
+            default: "true"
+        - name: ordering
+          in: query
+          required: false
+          description: Ordre de la liste. Toute autre valeur répond `400`.
+          schema:
+            type: string
+            enum: [-updated_at, updated_at, -created_at, created_at]
+            default: -updated_at
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de livraisons.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedShipments"
+              example:
+                count: 41
+                next: https://app.woura.africa/api/partner/v1/shipments?page=2&page_size=1
+                previous: null
+                results:
+                  - id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+                    object: shipment
+                    status: accepted
+                    mode: pickup
+                    active: true
+                    order_id: "393093856815339"
+                    order_number: "#0412"
+                    merchant:
+                      id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                      name: Boutique Awa
+                      phone: "+22997000000"
+                      country: BJ
+                      pickup_address: Marché Dantokpa, allée 4, Cotonou
+                    customer:
+                      name: Koffi Mensah
+                      phone: "+22996000000"
+                      address: Fidjrossè, rue 12
+                      city: Cotonou
+                      country: BJ
+                      details: Portail bleu après la pharmacie
+                    items:
+                      - name: Robe wax
+                        variant: Taille M
+                        sku: RW-38
+                        quantity: 2
+                        unit_price: 7500
+                        product_id: "771204958321467"
+                    cod_amount: 15000
+                    delivery_fee: 1500
+                    delivery_fee_included: true
+                    currency: XOF
+                    payment:
+                      status: unpaid
+                      paid_amount: 0
+                    note: Appeler avant de passer
+                    external_reference: EXP-2026-000123
+                    rider:
+                      name: Ibrahim Sanni
+                      phone: "+22990000000"
+                    reason: ""
+                    photo_url: ""
+                    rescheduled_for: null
+                    created_at: "2026-10-22T09:12:03.418225+00:00"
+                    updated_at: "2026-10-22T09:20:47.006512+00:00"
+                    closed_at: null
+                    events:
+                      - status: assigned
+                        previous_status: ""
+                        reason: ""
+                        actor: merchant
+                        occurred_at: "2026-10-22T09:12:03.420331+00:00"
+                        recorded_at: "2026-10-22T09:12:03.421007+00:00"
+                      - status: accepted
+                        previous_status: assigned
+                        reason: ""
+                        actor: api
+                        occurred_at: "2026-10-22T09:20:46.998104+00:00"
+                        recorded_at: "2026-10-22T09:20:46.999381+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /shipments/{shipment_id}:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    get:
+      operationId: getShipment
+      tags: [Livraisons]
+      summary: Une livraison
+      description: |
+        Une livraison de votre société, avec son journal complet (`events`).
+        Une livraison d'une autre société, ou du live avec une clé de test (et
+        inversement), répond `404`.
+      responses:
+        "200":
+          description: La livraison.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+              example:
+                id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+                object: shipment
+                status: accepted
+                mode: pickup
+                active: true
+                order_id: "393093856815339"
+                order_number: "#0412"
+                merchant:
+                  id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                  name: Boutique Awa
+                  phone: "+22997000000"
+                  country: BJ
+                  pickup_address: Marché Dantokpa, allée 4, Cotonou
+                customer:
+                  name: Koffi Mensah
+                  phone: "+22996000000"
+                  address: Fidjrossè, rue 12
+                  city: Cotonou
+                  country: BJ
+                  details: Portail bleu après la pharmacie
+                items:
+                  - name: Robe wax
+                    variant: Taille M
+                    sku: RW-38
+                    quantity: 2
+                    unit_price: 7500
+                    product_id: "771204958321467"
+                cod_amount: 15000
+                delivery_fee: 1500
+                delivery_fee_included: true
+                currency: XOF
+                payment:
+                  status: unpaid
+                  paid_amount: 0
+                note: Appeler avant de passer
+                external_reference: EXP-2026-000123
+                rider:
+                  name: Ibrahim Sanni
+                  phone: "+22990000000"
+                reason: ""
+                photo_url: ""
+                rescheduled_for: null
+                created_at: "2026-10-22T09:12:03.418225+00:00"
+                updated_at: "2026-10-22T09:20:47.006512+00:00"
+                closed_at: null
+                events:
+                  - status: assigned
+                    previous_status: ""
+                    reason: ""
+                    actor: merchant
+                    occurred_at: "2026-10-22T09:12:03.420331+00:00"
+                    recorded_at: "2026-10-22T09:12:03.421007+00:00"
+                  - status: accepted
+                    previous_status: assigned
+                    reason: ""
+                    actor: api
+                    occurred_at: "2026-10-22T09:20:46.998104+00:00"
+                    recorded_at: "2026-10-22T09:20:46.999381+00:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      operationId: updateShipment
+      tags: [Livraisons]
+      summary: Changer votre référence
+      description: |
+        Enregistre votre propre référence de la livraison
+        (`external_reference`, chaîne vide pour l'effacer). Ce n'est pas un
+        statut : rien n'est ajouté au journal, aucun webhook ne part, et la
+        référence reste modifiable une fois la livraison terminée ou close.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentUpdateRequest"
+            example:
+              external_reference: EXP-2026-000123
+      responses:
+        "200":
+          description: La livraison, avec la nouvelle référence.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /shipments/{shipment_id}/accept:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    post:
+      operationId: acceptShipment
+      tags: [Livraisons]
+      summary: Accepter une livraison
+      description: |
+        Passe la livraison en `accepted`, en option avec le livreur que vous
+        affectez. Permis depuis `assigned` ou `accepted` (renvoyer `accepted`
+        met à jour le livreur ; sans rien de neuf, rien n'est écrit et la
+        réponse est la même). La commande du marchand ne change pas.
+
+        Une livraison arrive déjà `accepted` quand le partenariat accepte
+        d'office (réglage du marchand) ; sinon elle arrive `assigned` et attend
+        votre réponse. Déclarer `picked_up`, `in_transit` ou `delivered`
+        (route `events`) vaut aussi acceptation.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentAcceptRequest"
+            example:
+              rider_name: Ibrahim Sanni
+              rider_phone: "+22990000000"
+      responses:
+        "200":
+          description: La livraison, acceptée.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/ShipmentConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /shipments/{shipment_id}/refuse:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    post:
+      operationId: refuseShipment
+      tags: [Livraisons]
+      summary: Refuser une livraison
+      description: |
+        Refuse la livraison, avec un motif obligatoire. Permis seulement avant
+        la prise en charge (depuis `assigned` ou `accepted`) ; une fois le
+        colis en main, déclarez `cancelled` ou `returned` (route `events`).
+
+        La livraison passe `refused` et est close (`active: false`). La
+        commande revient au marchand sans livreur, son statut inchangé, et le
+        marchand est prévenu (notification dans l'application et push). Toute
+        déclaration suivante sur cette livraison répond `409 shipment_closed`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentRefuseRequest"
+            example:
+              reason: Zone non couverte (Sèmè-Kpodji)
+      responses:
+        "200":
+          description: La livraison, refusée et close.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/ShipmentConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /shipments/{shipment_id}/events:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    post:
+      operationId: createShipmentEvent
+      tags: [Livraisons]
+      summary: Déclarer un statut
+      description: |
+        Déclare un statut (ou une mise à jour) de la livraison. Le statut est
+        vérifié, écrit au journal (`actor: api`), puis la commande du marchand
+        suit :
+
+        | `status` | Commande du marchand |
+        |---|---|
+        | `accepted` | inchangée |
+        | `refused` | revient sans livreur (voir `POST /shipments/{id}/refuse`) |
+        | `picked_up` | en livraison |
+        | `in_transit` | en livraison |
+        | `delivered` | livrée |
+        | `failed` | injoignable |
+        | `rescheduled` | programmée à `rescheduled_for` |
+        | `returned` | retournée |
+        | `cancelled` | annulée |
+
+        **Passages permis** (sinon `409 transition_not_allowed`) :
+
+        | Depuis | Vers |
+        |---|---|
+        | `assigned`, `accepted` | `accepted`, `refused`, `picked_up`, `in_transit`, `delivered`, `failed`, `rescheduled`, `cancelled` |
+        | `picked_up` | `picked_up`, `in_transit`, `delivered`, `failed`, `rescheduled`, `returned`, `cancelled` |
+        | `in_transit` | `in_transit`, `delivered`, `failed`, `rescheduled`, `returned`, `cancelled` |
+        | `failed` | `failed`, `in_transit`, `delivered`, `rescheduled`, `returned`, `cancelled` |
+        | `rescheduled` | `rescheduled`, `picked_up`, `in_transit`, `delivered`, `failed`, `returned`, `cancelled` |
+        | `delivered`, `refused`, `returned`, `cancelled` | aucun (statuts finaux) |
+
+        Renvoyer le statut actuel est une mise à jour (livreur, nouvelle date
+        de report, nouvel échec avec un autre motif). Sans rien de neuf, rien
+        n'est écrit et la réponse est `200` au lieu de `201` ; de même pour
+        `delivered`, `returned` ou `cancelled` renvoyé sur une livraison qui a
+        déjà ce statut, ou pour une `Idempotency-Key` déjà vue au journal de
+        cette livraison.
+
+        **Règles** (sinon `400 validation_error`, `details` par champ) :
+        - `reason` est obligatoire pour `refused`, `failed`, `rescheduled` et
+          `cancelled` ;
+        - `rescheduled_for` est obligatoire pour `rescheduled`, et ne doit pas
+          être passée (tolérance de 5 minutes) ; il est ignoré pour les
+          autres statuts ;
+        - `delivery_fee` (vos frais réels) ne s'envoie qu'avec `delivered` ;
+          il remplace les frais de livraison de la commande ;
+        - `picked_up` n'existe qu'en mode `pickup` ;
+        - en mode `depot` (hors bac à sable), partir en livraison
+          (`in_transit`) exige que votre stock couvre les articles (`400`,
+          « Stock insuffisant chez le livreur… »).
+
+        Une livraison close (`active: false`) répond `409 shipment_closed`.
+        En cas de refus, rien n'est écrit, ni sur la livraison ni sur la
+        commande.
+
+        Ce que vous déclarez ici ne vous est pas renvoyé par webhook.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentEventRequest"
+            examples:
+              en_route:
+                summary: En route, avec le livreur
+                value:
+                  status: in_transit
+                  rider_name: Ibrahim Sanni
+                  rider_phone: "+22990000000"
+              livree:
+                summary: Livrée, avec les frais réels et la preuve
+                value:
+                  status: delivered
+                  delivery_fee: 2000
+                  photo_url: https://cdn.livraisons-express.example/pod/EXP-2026-000123.jpg
+                  occurred_at: "2026-10-22T15:42:10+01:00"
+              echec:
+                summary: Échec
+                value:
+                  status: failed
+                  reason: Client injoignable, trois appels sans réponse
+              report:
+                summary: Report
+                value:
+                  status: rescheduled
+                  reason: Le client demande un passage demain matin
+                  rescheduled_for: "2026-10-23T09:00:00+01:00"
+              annulee:
+                summary: Annulée (le client refuse le colis)
+                value:
+                  status: cancelled
+                  reason: Le client refuse le colis à la porte
+      responses:
+        "201":
+          description: Statut écrit ; la livraison à jour.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+              example:
+                id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+                object: shipment
+                status: delivered
+                mode: pickup
+                active: true
+                order_id: "393093856815339"
+                order_number: "#0412"
+                merchant:
+                  id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                  name: Boutique Awa
+                  phone: "+22997000000"
+                  country: BJ
+                  pickup_address: Marché Dantokpa, allée 4, Cotonou
+                customer:
+                  name: Koffi Mensah
+                  phone: "+22996000000"
+                  address: Fidjrossè, rue 12
+                  city: Cotonou
+                  country: BJ
+                  details: Portail bleu après la pharmacie
+                items:
+                  - name: Robe wax
+                    variant: Taille M
+                    sku: RW-38
+                    quantity: 2
+                    unit_price: 7500
+                    product_id: "771204958321467"
+                cod_amount: 15000
+                delivery_fee: 2000
+                delivery_fee_included: true
+                currency: XOF
+                payment:
+                  status: unpaid
+                  paid_amount: 0
+                note: Appeler avant de passer
+                external_reference: EXP-2026-000123
+                rider:
+                  name: Ibrahim Sanni
+                  phone: "+22990000000"
+                reason: ""
+                photo_url: https://cdn.livraisons-express.example/pod/EXP-2026-000123.jpg
+                rescheduled_for: null
+                created_at: "2026-10-22T09:12:03.418225+00:00"
+                updated_at: "2026-10-22T14:42:11.270954+00:00"
+                closed_at: null
+                events:
+                  - status: assigned
+                    previous_status: ""
+                    reason: ""
+                    actor: merchant
+                    occurred_at: "2026-10-22T09:12:03.420331+00:00"
+                    recorded_at: "2026-10-22T09:12:03.421007+00:00"
+                  - status: accepted
+                    previous_status: assigned
+                    reason: ""
+                    actor: api
+                    occurred_at: "2026-10-22T09:20:46.998104+00:00"
+                    recorded_at: "2026-10-22T09:20:46.999381+00:00"
+                  - status: picked_up
+                    previous_status: accepted
+                    reason: ""
+                    actor: api
+                    occurred_at: "2026-10-22T11:03:27.551870+00:00"
+                    recorded_at: "2026-10-22T11:03:27.552431+00:00"
+                  - status: in_transit
+                    previous_status: picked_up
+                    reason: ""
+                    actor: api
+                    occurred_at: "2026-10-22T13:58:02.114093+00:00"
+                    recorded_at: "2026-10-22T13:58:02.114620+00:00"
+                  - status: delivered
+                    previous_status: in_transit
+                    reason: ""
+                    actor: api
+                    occurred_at: "2026-10-22T14:42:10+00:00"
+                    recorded_at: "2026-10-22T14:42:11.268805+00:00"
+        "200":
+          description: |
+            Rien n'a été écrit (même statut sans rien de neuf, statut final
+            renvoyé, ou `Idempotency-Key` déjà vue au journal de cette
+            livraison) ; la livraison telle qu'elle est.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/ShipmentConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Stock
+  # ══════════════════════════════════════════════════════════════════════
+
+  /stock:
+    get:
+      operationId: listStock
+      tags: [Stock]
+      summary: Votre stock en dépôt
+      description: |
+        Le stock que votre société détient pour ses marchands, par produit,
+        trié par nom de boutique puis par produit.
+      parameters:
+        - name: merchant
+          in: query
+          required: false
+          description: "Identifiant de la boutique (UUID). Mal formé : `400`."
+          schema:
+            type: string
+            format: uuid
+        - name: product
+          in: query
+          required: false
+          description: "Identifiant du produit (chiffres). Autre chose : `400`."
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de niveaux de stock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedStockLevels"
+              example:
+                count: 1
+                next: null
+                previous: null
+                results:
+                  - merchant:
+                      id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                      name: Boutique Awa
+                    product:
+                      id: "771204958321467"
+                      name: Robe wax
+                      sku: RW-38
+                    quantity: 6
+                    reorder_threshold: 5
+                    updated_at: "2026-10-22T11:47:30.902215+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stock-transfers:
+    get:
+      operationId: listStockTransfers
+      tags: [Stock]
+      summary: Lister les transferts de stock
+      description: |
+        Les transferts de stock que les marchands envoient vers votre dépôt,
+        le plus récent d'abord.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Statuts, séparés par des virgules. Un statut inconnu répond `400`.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/StockTransferStatus"
+        - name: merchant
+          in: query
+          required: false
+          description: "Identifiant de la boutique (UUID). Mal formé : `400`."
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de transferts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedStockTransfers"
+              example:
+                count: 1
+                next: null
+                previous: null
+                results:
+                  - id: c2d8f1a6-4e7b-4a39-b5c0-8e1f3d6a9b27
+                    object: stock_transfer
+                    status: pending
+                    merchant:
+                      id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                      name: Boutique Awa
+                    product:
+                      id: "771204958321467"
+                      name: Robe wax
+                      sku: RW-38
+                    quantity: 6
+                    comment: Six robes taille M pour la semaine
+                    rejection_reason: ""
+                    created_at: "2026-10-22T11:30:14.660281+00:00"
+                    validated_at: null
+                    updated_at: "2026-10-22T11:30:14.660281+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stock-transfers/{transfer_id}:
+    parameters:
+      - $ref: "#/components/parameters/TransferId"
+    get:
+      operationId: getStockTransfer
+      tags: [Stock]
+      summary: Un transfert de stock
+      responses:
+        "200":
+          description: Le transfert.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransfer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stock-transfers/{transfer_id}/accept:
+    parameters:
+      - $ref: "#/components/parameters/TransferId"
+    post:
+      operationId: acceptStockTransfer
+      tags: [Stock]
+      summary: Accepter un transfert de stock
+      description: |
+        Accepte un transfert en attente : la quantité entre dans votre stock
+        pour ce produit, et le marchand est prévenu. Corps vide (aucun champ
+        accepté). Un transfert qui n'est pas en attente répond
+        `409 transfer_not_pending`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Le transfert, accepté.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransfer"
+              example:
+                id: c2d8f1a6-4e7b-4a39-b5c0-8e1f3d6a9b27
+                object: stock_transfer
+                status: accepted
+                merchant:
+                  id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                  name: Boutique Awa
+                product:
+                  id: "771204958321467"
+                  name: Robe wax
+                  sku: RW-38
+                quantity: 6
+                comment: Six robes taille M pour la semaine
+                rejection_reason: ""
+                created_at: "2026-10-22T11:30:14.660281+00:00"
+                validated_at: "2026-10-22T11:47:30.884012+00:00"
+                updated_at: "2026-10-22T11:47:30.884530+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TransferConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stock-transfers/{transfer_id}/refuse:
+    parameters:
+      - $ref: "#/components/parameters/TransferId"
+    post:
+      operationId: refuseStockTransfer
+      tags: [Stock]
+      summary: Refuser un transfert de stock
+      description: |
+        Refuse un transfert en attente, avec un motif facultatif
+        (`rejection_reason`) ; le marchand est prévenu, votre stock ne bouge
+        pas. Un transfert qui n'est pas en attente répond
+        `409 transfer_not_pending`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockTransferRefuseRequest"
+            example:
+              reason: Quantité reçue différente (4 au lieu de 6)
+      responses:
+        "200":
+          description: Le transfert, refusé.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransfer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TransferConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stock-returns:
+    get:
+      operationId: listStockReturns
+      tags: [Stock]
+      summary: Lister les retours de stock
+      description: Les retours de stock que vous avez demandés, le plus récent d'abord.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Statuts, séparés par des virgules. Un statut inconnu répond `400`.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/StockReturnStatus"
+        - name: merchant
+          in: query
+          required: false
+          description: "Identifiant de la boutique (UUID). Mal formé : `400`."
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de retours.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedStockReturns"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: createStockReturn
+      tags: [Stock]
+      summary: Demander un retour de stock
+      description: |
+        Demande à rendre au marchand une quantité de son produit que vous
+        détenez. Le marchand est prévenu et accepte ou refuse dans
+        l'application ; à l'acceptation, la quantité sort de votre stock.
+
+        `merchant_id` doit être une boutique avec laquelle votre société a (ou
+        a eu) un partenariat, et `product_id` un produit de cette boutique ;
+        sinon `404`. Une quantité supérieure à votre stock, ou un produit que
+        vous ne détenez pas, répond `409 conflict`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockReturnCreateRequest"
+            example:
+              merchant_id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+              product_id: "771204958321467"
+              quantity: 3
+              reason: Fin de saison, invendus
+      responses:
+        "201":
+          description: Le retour, en attente de la réponse du marchand.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockReturn"
+              example:
+                id: a9e3b7c1-6d2f-4b8a-9e40-5f7c1d3b8e62
+                object: stock_return
+                status: pending
+                merchant:
+                  id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                  name: Boutique Awa
+                product:
+                  id: "771204958321467"
+                  name: Robe wax
+                  sku: RW-38
+                quantity: 3
+                reason: Fin de saison, invendus
+                created_at: "2026-10-22T16:05:44.318760+00:00"
+                validated_at: null
+                updated_at: "2026-10-22T16:05:44.318760+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StockReturnConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stock-returns/{return_id}:
+    parameters:
+      - $ref: "#/components/parameters/ReturnId"
+    get:
+      operationId: getStockReturn
+      tags: [Stock]
+      summary: Un retour de stock
+      responses:
+        "200":
+          description: Le retour.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockReturn"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Webhooks
+  # ══════════════════════════════════════════════════════════════════════
+
+  /webhook-endpoints:
+    get:
+      operationId: listWebhookEndpoints
+      tags: [Webhooks]
+      summary: Lister vos points de webhook
+      description: |
+        Vos points de webhook de l'environnement de la clé (live ou test), le
+        plus récent d'abord, sans leur secret. Les points supprimés n'y sont
+        plus.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de points.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedWebhookEndpoints"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: createWebhookEndpoint
+      tags: [Webhooks]
+      summary: Enregistrer un point de webhook
+      description: |
+        Enregistre une URL qui recevra les événements signés de
+        l'environnement de la clé. Le `secret` de signature n'est montré
+        **qu'ici** (et à `rotate-secret`) : gardez-le.
+
+        L'URL doit être en `https`, sans identifiants, et son nom doit résoudre
+        vers des adresses publiques uniquement (ni privée, ni locale, ni
+        réservée) ; sinon `400 invalid_url`. La même vérification est refaite
+        à chaque envoi, et aucune redirection n'est suivie.
+
+        `events` vide ou absent : tous les événements, y compris ceux ajoutés
+        plus tard. 10 points au plus par environnement (points désactivés
+        compris) : au-delà, `409 too_many_endpoints`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookEndpointCreateRequest"
+            example:
+              url: https://api.livraisons-express.example/webhooks/woura
+              description: Production Livraisons Express
+              events: [shipment.assigned, shipment.updated, shipment.cancelled, shipment.status_changed]
+      responses:
+        "201":
+          description: Le point, avec son secret.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointWithSecret"
+              example:
+                id: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+                object: webhook_endpoint
+                url: https://api.livraisons-express.example/webhooks/woura
+                description: Production Livraisons Express
+                environment: live
+                events: [shipment.assigned, shipment.cancelled, shipment.status_changed, shipment.updated]
+                enabled: true
+                disabled_reason: ""
+                consecutive_failures: 0
+                created_at: "2026-10-22T08:41:37.205118+00:00"
+                updated_at: "2026-10-22T08:41:37.205172+00:00"
+                secret: whsec_Jx8mQ2vL5nR9tW3yB7cE1fH4kP6sU0zA2dG5jM8oQ1r
+        "400":
+          $ref: "#/components/responses/BadRequestWebhookUrl"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/EndpointCreateConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhook-endpoints/{endpoint_id}:
+    parameters:
+      - $ref: "#/components/parameters/EndpointId"
+    get:
+      operationId: getWebhookEndpoint
+      tags: [Webhooks]
+      summary: Un point de webhook
+      description: Le point, sans son secret. Un point d'un autre environnement que la clé répond `404`.
+      responses:
+        "200":
+          description: Le point.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpoint"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      operationId: updateWebhookEndpoint
+      tags: [Webhooks]
+      summary: Modifier un point de webhook
+      description: |
+        Modifie les champs envoyés, et eux seuls (un corps qui n'est pas un
+        objet JSON est refusé, `400 validation_error`). Une nouvelle `url` est
+        vérifiée comme à la création (`400 invalid_url`). `enabled: true`
+        réactive un point désactivé (par vous, par Woura après des échecs
+        répétés, ou à la révocation de la clé qui l'a créé) et remet son
+        compteur d'échecs à zéro ; `enabled: false` le
+        désactive : il ne reçoit plus d'événements, et ses envois en attente
+        sont abandonnés à leur prochaine tentative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookEndpointUpdateRequest"
+            example:
+              enabled: true
+      responses:
+        "200":
+          description: Le point modifié, sans son secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpoint"
+        "400":
+          $ref: "#/components/responses/BadRequestWebhookUrl"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: deleteWebhookEndpoint
+      tags: [Webhooks]
+      summary: Supprimer un point de webhook
+      description: |
+        Supprime le point : il ne reçoit plus rien et disparaît des listes ;
+        ses envois en attente ou en nouvel essai sont abandonnés (`failed`).
+        Le journal de ses envois reste lisible dans `/webhook-deliveries`.
+      responses:
+        "204":
+          description: Supprimé (pas de corps).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhook-endpoints/{endpoint_id}/rotate-secret:
+    parameters:
+      - $ref: "#/components/parameters/EndpointId"
+    post:
+      operationId: rotateWebhookEndpointSecret
+      tags: [Webhooks]
+      summary: Changer le secret d'un point
+      description: |
+        Génère un nouveau secret et le rend (seule autre fois où il est
+        montré). L'ancien ne signe plus rien dès cette réponse : chaque
+        tentative d'envoi est signée avec le secret en vigueur. Corps vide.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Le point, avec son nouveau secret.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointWithSecret"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhook-endpoints/{endpoint_id}/ping:
+    parameters:
+      - $ref: "#/components/parameters/EndpointId"
+    post:
+      operationId: pingWebhookEndpoint
+      tags: [Webhooks]
+      summary: Tester un point (ping)
+      description: |
+        Envoie tout de suite un événement `ping` signé à ce point (quel que
+        soit son abonnement) et rend l'envoi après la tentative : `succeeded`,
+        ou `retrying` avec `response_status` et `error` (de nouveaux essais
+        suivent alors, comme pour tout envoi). Corps vide.
+
+        Un point désactivé répond `409 endpoint_disabled` : réactivez-le
+        d'abord (`PATCH`, `enabled: true`).
+
+        Limite propre à cette route : 10 requêtes par minute et par clé, en
+        plus de la limite générale (`429 rate_limited`).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: L'envoi du ping, après la tentative.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+              examples:
+                reussi:
+                  summary: Réponse 2xx du point
+                  value:
+                    id: 2e7a9c41-5b8d-4f3e-a6c2-9d1b4e8f7a05
+                    object: webhook_delivery
+                    event_id: evt_9a4e1c7b3d2f4a8e9b6c0d5e7f1a3b2c
+                    event_type: ping
+                    endpoint_id: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+                    status: succeeded
+                    attempts: 1
+                    next_attempt_at: null
+                    last_attempt_at: "2026-10-22T08:42:05.771309+00:00"
+                    response_status: 200
+                    error: ""
+                    trigger: automatic
+                    created_at: "2026-10-22T08:42:05.512846+00:00"
+                    succeeded_at: "2026-10-22T08:42:05.771309+00:00"
+                echec:
+                  summary: Le point a répondu 500
+                  value:
+                    id: 2e7a9c41-5b8d-4f3e-a6c2-9d1b4e8f7a05
+                    object: webhook_delivery
+                    event_id: evt_9a4e1c7b3d2f4a8e9b6c0d5e7f1a3b2c
+                    event_type: ping
+                    endpoint_id: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+                    status: retrying
+                    attempts: 1
+                    next_attempt_at: "2026-10-22T08:43:05.512846+00:00"
+                    last_attempt_at: "2026-10-22T08:42:05.904417+00:00"
+                    response_status: 500
+                    error: Réponse HTTP 500
+                    trigger: automatic
+                    created_at: "2026-10-22T08:42:05.512846+00:00"
+                    succeeded_at: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/EndpointDisabledConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhook-deliveries:
+    get:
+      operationId: listWebhookDeliveries
+      tags: [Webhooks]
+      summary: Journal des envois
+      description: |
+        Les envois d'événements vers vos points de l'environnement de la clé
+        (points supprimés compris), le plus récent d'abord. Le journal est
+        gardé 30 jours.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Un seul statut. Toute autre valeur répond `400`.
+          schema:
+            $ref: "#/components/schemas/WebhookDeliveryStatus"
+        - name: endpoint
+          in: query
+          required: false
+          description: "Identifiant du point (UUID). Mal formé : `400`."
+          schema:
+            type: string
+            format: uuid
+        - name: event_type
+          in: query
+          required: false
+          description: Type d'événement, `ping` compris. Un type inconnu répond `400`.
+          schema:
+            $ref: "#/components/schemas/WebhookEventTypeOrPing"
+        - name: event_id
+          in: query
+          required: false
+          description: "Identifiant de l'événement, avec ou sans le préfixe `evt_`. Mal formé : `400`."
+          schema:
+            type: string
+          example: evt_4c1f8e2a9b7d4e6f8a0c3b5d7e9f1a2c
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page d'envois.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedWebhookDeliveries"
+              example:
+                count: 1
+                next: null
+                previous: null
+                results:
+                  - id: 8b3e5d71-2c9a-4f06-b8e1-6a4d0c7f2e93
+                    object: webhook_delivery
+                    event_id: evt_4c1f8e2a9b7d4e6f8a0c3b5d7e9f1a2c
+                    event_type: shipment.assigned
+                    endpoint_id: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+                    status: succeeded
+                    attempts: 1
+                    next_attempt_at: null
+                    last_attempt_at: "2026-10-22T09:12:04.390552+00:00"
+                    response_status: 200
+                    error: ""
+                    trigger: automatic
+                    created_at: "2026-10-22T09:12:04.118930+00:00"
+                    succeeded_at: "2026-10-22T09:12:04.390552+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhook-deliveries/{delivery_id}:
+    parameters:
+      - $ref: "#/components/parameters/DeliveryId"
+    get:
+      operationId: getWebhookDelivery
+      tags: [Webhooks]
+      summary: Un envoi
+      description: |
+        L'envoi, avec le corps envoyé (`request_body`, l'événement tel qu'il a
+        été signé) et le début de la réponse de votre point (`response_body`,
+        1 000 caractères au plus).
+      responses:
+        "200":
+          description: L'envoi détaillé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhook-deliveries/{delivery_id}/retry:
+    parameters:
+      - $ref: "#/components/parameters/DeliveryId"
+    post:
+      operationId: retryWebhookDelivery
+      tags: [Webhooks]
+      summary: Renvoyer un événement
+      description: |
+        Crée un nouvel envoi du même événement vers le même point, mis en file
+        aussitôt, quel que soit le statut de l'envoi d'origine. L'événement
+        garde son `id` (dédoublonnez sur lui) ; l'envoi a un nouvel
+        identifiant (`Woura-Delivery-Id`) et `trigger: api_retry`. Corps vide.
+
+        Un point désactivé ou supprimé répond `409 endpoint_disabled`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "202":
+          description: Le nouvel envoi, en attente.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+              example:
+                id: 71c4e9a2-3f6b-4d18-9e2a-b5c8d0f4a613
+                object: webhook_delivery
+                event_id: evt_4c1f8e2a9b7d4e6f8a0c3b5d7e9f1a2c
+                event_type: shipment.assigned
+                endpoint_id: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+                status: pending
+                attempts: 0
+                next_attempt_at: "2026-10-22T17:02:11.640927+00:00"
+                last_attempt_at: null
+                response_status: null
+                error: ""
+                trigger: api_retry
+                created_at: "2026-10-22T17:02:11.641388+00:00"
+                succeeded_at: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/EndpointDisabledConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Mode test
+  # ══════════════════════════════════════════════════════════════════════
+
+  /test/shipments:
+    post:
+      operationId: createTestShipment
+      tags: [Mode test]
+      summary: Simuler une commande confiée
+      description: |
+        Un marchand fictif de votre bac à sable crée une commande et vous la
+        confie : la livraison s'ouvre comme une vraie (`shipment.assigned` vers
+        vos points de test), `accepted` d'office si
+        `accept_automatically` vaut `true`, sinon `assigned`.
+
+        Sans `items`, un article « Article de test » (SKU `TEST-1`, quantité
+        1) au prix `cod_amount` (15 000 par défaut). Sans `customer`, le client
+        prend les valeurs par défaut (« Client test », Cotonou, BJ). Le
+        téléphone du client est fictif (`+99900000000`).
+
+        Plafond : 500 commandes de test par 24 heures pour votre bac à sable ;
+        au-delà, `409 sandbox_limit_reached`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestShipmentCreateRequest"
+            example:
+              mode: pickup
+              accept_automatically: false
+              items:
+                - name: Pagne wax 6 yards
+                  sku: PW-6
+                  quantity: 2
+                  unit_price: 5000
+              delivery_fee: 1500
+              delivery_fee_included: false
+              customer:
+                name: Koffi Mensah
+                address: Fidjrossè, rue 12
+                city: Cotonou
+                country: BJ
+              note: Appeler avant de passer
+      responses:
+        "201":
+          description: La livraison de test, ouverte.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+              example:
+                id: 9d2b6f80-1e4c-4a7b-8c35-f0a2e9d4b716
+                object: shipment
+                status: assigned
+                mode: pickup
+                active: true
+                order_id: "604918273645102"
+                order_number: "#0001"
+                merchant:
+                  id: 47e0b9c2-8d1a-4f5e-b3c6-a9e2d7f0c158
+                  name: Boutique de test Woura
+                  phone: ""
+                  country: ""
+                  pickup_address: Entrepôt de test, rue fictive 1 (bac à sable Woura)
+                customer:
+                  name: Koffi Mensah
+                  phone: "+99900000000"
+                  address: Fidjrossè, rue 12
+                  city: Cotonou
+                  country: BJ
+                  details: ""
+                items:
+                  - name: Pagne wax 6 yards
+                    variant: ""
+                    sku: PW-6
+                    quantity: 2
+                    unit_price: 5000
+                    product_id: null
+                cod_amount: 11500
+                delivery_fee: 1500
+                delivery_fee_included: false
+                currency: XOF
+                payment:
+                  status: unpaid
+                  paid_amount: 0
+                note: Appeler avant de passer
+                external_reference: ""
+                rider:
+                  name: ""
+                  phone: ""
+                reason: ""
+                photo_url: ""
+                rescheduled_for: null
+                created_at: "2026-10-22T16:20:08.551203+00:00"
+                updated_at: "2026-10-22T16:20:08.551240+00:00"
+                closed_at: null
+                events:
+                  - status: assigned
+                    previous_status: ""
+                    reason: ""
+                    actor: merchant
+                    occurred_at: "2026-10-22T16:20:08.552871+00:00"
+                    recorded_at: "2026-10-22T16:20:08.553309+00:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "409":
+          $ref: "#/components/responses/SandboxLimitConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/shipments/{shipment_id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    post:
+      operationId: cancelTestShipment
+      tags: [Mode test]
+      summary: Simuler l'annulation par le marchand
+      description: |
+        Le marchand fictif annule la commande : la livraison passe `cancelled`
+        (`shipment.cancelled` vers vos points de test). Sans `reason`, le motif
+        est « Annulée par le marchand (test) ». Une livraison close ou déjà
+        terminée répond `409 shipment_closed`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestShipmentCancelRequest"
+            example:
+              reason: Le client a changé d'avis
+      responses:
+        "200":
+          description: La livraison, annulée.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TestShipmentConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/shipments/{shipment_id}/update:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    post:
+      operationId: updateTestShipment
+      tags: [Mode test]
+      summary: Simuler une modification par le marchand
+      description: |
+        Le marchand fictif retouche la commande : adresse (`customer.address`),
+        ville, note, ou montant des articles
+        (`items_amount`, qui change `cod_amount`). Si le contenu de la
+        livraison change, `shipment.updated` part vers vos points de test avec
+        les champs changés. Une livraison close répond `409 shipment_closed`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestShipmentUpdateRequest"
+            example:
+              address: Rue 12, Fidjrossè
+              items_amount: 12000
+      responses:
+        "200":
+          description: La livraison, après la modification.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TestShipmentConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/stock-transfers:
+    post:
+      operationId: createTestStockTransfer
+      tags: [Mode test]
+      summary: Simuler un transfert de stock
+      description: |
+        Le marchand fictif envoie du stock vers votre dépôt de test :
+        `stock_transfer.requested` part vers vos points de test. Le produit
+        fictif est créé au premier usage de son nom. Acceptez-le ensuite avec
+        `POST /stock-transfers/{id}/accept`.
+
+        Plafond : 200 transferts de test par 24 heures pour votre bac à sable ;
+        au-delà, `409 sandbox_limit_reached`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestStockTransferCreateRequest"
+            example:
+              product_name: Pagne wax 6 yards
+              quantity: 7
+              comment: Réassort de la semaine
+      responses:
+        "201":
+          description: Le transfert, en attente.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransfer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "409":
+          $ref: "#/components/responses/SandboxLimitConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/partnership-requests:
+    post:
+      operationId: createTestPartnershipRequest
+      tags: [Mode test]
+      summary: Simuler une demande de partenariat
+      description: |
+        Un nouveau marchand fictif demande à travailler avec votre société :
+        `partnership.requested` part vers vos points de test. Répondez ensuite
+        avec `POST /merchants/{shop_id}/accept` ou `/refuse`.
+
+        Plafond : 20 marchands fictifs en tout dans votre bac à sable, boutique
+        de test principale comprise ; au-delà, `409 sandbox_limit_reached`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestPartnershipRequestCreateRequest"
+            example:
+              merchant_name: Chez Awa
+              message: Bonjour, livrez-vous à Abomey-Calavi ?
+      responses:
+        "201":
+          description: Le marchand fictif, partenariat en attente.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "409":
+          $ref: "#/components/responses/SandboxLimitConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# ════════════════════════════════════════════════════════════════════════
+# Webhooks (événements envoyés par Woura)
+# ════════════════════════════════════════════════════════════════════════
+
+webhooks:
+
+  shipment.assigned:
+    post:
+      operationId: onShipmentAssigned
+      tags: [Webhooks]
+      summary: shipment.assigned
+      description: |
+        Une commande vous est confiée : une livraison s'ouvre (assignation par
+        le marchand ou le call center, ou commande qui vous revient). `data.shipment`
+        a la forme de `GET /shipments/{id}`, lue après l'enregistrement : son
+        statut est déjà `accepted` si le partenariat accepte d'office.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentAssignedEvent"
+            example:
+              id: evt_4c1f8e2a9b7d4e6f8a0c3b5d7e9f1a2c
+              object: event
+              type: shipment.assigned
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T09:12:03.420331+00:00"
+              data:
+                shipment:
+                  id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+                  object: shipment
+                  status: assigned
+                  mode: pickup
+                  active: true
+                  order_id: "393093856815339"
+                  order_number: "#0412"
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                    phone: "+22997000000"
+                    country: BJ
+                    pickup_address: Marché Dantokpa, allée 4, Cotonou
+                  customer:
+                    name: Koffi Mensah
+                    phone: "+22996000000"
+                    address: Fidjrossè, rue 12
+                    city: Cotonou
+                    country: BJ
+                    details: Portail bleu après la pharmacie
+                  items:
+                    - name: Robe wax
+                      variant: Taille M
+                      sku: RW-38
+                      quantity: 2
+                      unit_price: 7500
+                      product_id: "771204958321467"
+                  cod_amount: 15000
+                  delivery_fee: 1500
+                  delivery_fee_included: true
+                  currency: XOF
+                  payment:
+                    status: unpaid
+                    paid_amount: 0
+                  note: Appeler avant de passer
+                  external_reference: ""
+                  rider:
+                    name: ""
+                    phone: ""
+                  reason: ""
+                  photo_url: ""
+                  rescheduled_for: null
+                  created_at: "2026-10-22T09:12:03.418225+00:00"
+                  updated_at: "2026-10-22T09:12:03.418261+00:00"
+                  closed_at: null
+                  events:
+                    - status: assigned
+                      previous_status: ""
+                      reason: ""
+                      actor: merchant
+                      occurred_at: "2026-10-22T09:12:03.420331+00:00"
+                      recorded_at: "2026-10-22T09:12:03.421007+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  shipment.status_changed:
+    post:
+      operationId: onShipmentStatusChanged
+      tags: [Webhooks]
+      summary: shipment.status_changed
+      description: |
+        Le statut de votre livraison a changé du fait de quelqu'un d'autre que
+        votre société (marchand, call center, Woura) : par exemple, le marchand
+        marque la commande livrée ou retournée. `data.previous_status` est le
+        statut d'avant (chaîne vide s'il n'y en a pas).
+
+        Rien ne part pour ce que votre société déclare elle-même (API ou
+        application Woura Agent), ni pour l'acceptation d'office qui suit
+        l'assignation (`shipment.assigned` la montre déjà), ni pour une
+        annulation (`shipment.cancelled`).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentStatusChangedEvent"
+            example:
+              id: evt_7b2d9e4f1a6c4b8d9e3f0a5c7d1e2b4f
+              object: event
+              type: shipment.status_changed
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T17:30:12.884506+00:00"
+              data:
+                previous_status: accepted
+                shipment:
+                  id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+                  object: shipment
+                  status: delivered
+                  mode: pickup
+                  active: true
+                  order_id: "393093856815339"
+                  order_number: "#0412"
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                    phone: "+22997000000"
+                    country: BJ
+                    pickup_address: Marché Dantokpa, allée 4, Cotonou
+                  customer:
+                    name: Koffi Mensah
+                    phone: "+22996000000"
+                    address: Fidjrossè, rue 12
+                    city: Cotonou
+                    country: BJ
+                    details: Portail bleu après la pharmacie
+                  items:
+                    - name: Robe wax
+                      variant: Taille M
+                      sku: RW-38
+                      quantity: 2
+                      unit_price: 7500
+                      product_id: "771204958321467"
+                  cod_amount: 15000
+                  delivery_fee: 1500
+                  delivery_fee_included: true
+                  currency: XOF
+                  payment:
+                    status: unpaid
+                    paid_amount: 0
+                  note: Appeler avant de passer
+                  external_reference: EXP-2026-000123
+                  rider:
+                    name: Ibrahim Sanni
+                    phone: "+22990000000"
+                  reason: ""
+                  photo_url: ""
+                  rescheduled_for: null
+                  created_at: "2026-10-22T09:12:03.418225+00:00"
+                  updated_at: "2026-10-22T17:30:12.886020+00:00"
+                  closed_at: null
+                  events:
+                    - status: assigned
+                      previous_status: ""
+                      reason: ""
+                      actor: merchant
+                      occurred_at: "2026-10-22T09:12:03.420331+00:00"
+                      recorded_at: "2026-10-22T09:12:03.421007+00:00"
+                    - status: accepted
+                      previous_status: assigned
+                      reason: ""
+                      actor: api
+                      occurred_at: "2026-10-22T09:20:46.998104+00:00"
+                      recorded_at: "2026-10-22T09:20:46.999381+00:00"
+                    - status: delivered
+                      previous_status: accepted
+                      reason: ""
+                      actor: merchant
+                      occurred_at: "2026-10-22T17:30:12.884506+00:00"
+                      recorded_at: "2026-10-22T17:30:12.885113+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  shipment.cancelled:
+    post:
+      operationId: onShipmentCancelled
+      tags: [Webhooks]
+      summary: shipment.cancelled
+      description: |
+        Votre livraison est annulée par quelqu'un d'autre que votre société :
+        le marchand annule la commande, la réassigne à un autre livreur,
+        retire le livreur, ou remet la commande en attente. Dans les trois
+        derniers cas la livraison est aussi close (`active: false`). Le motif
+        est dans `data.shipment.reason`.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentCancelledEvent"
+            example:
+              id: evt_e3a1f7c9d2b84e6a9f0c1d3b5a7e9c2d
+              object: event
+              type: shipment.cancelled
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T12:05:33.104772+00:00"
+              data:
+                shipment:
+                  id: 1a7d3f9b-6c2e-4b85-a0f4-8e3c5d1b9a26
+                  object: shipment
+                  status: cancelled
+                  mode: pickup
+                  active: true
+                  order_id: "418820367215904"
+                  order_number: "#0415"
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                    phone: "+22997000000"
+                    country: BJ
+                    pickup_address: Marché Dantokpa, allée 4, Cotonou
+                  customer:
+                    name: Afiavi Dossou
+                    phone: "+22996000001"
+                    address: Akpakpa, carré 214
+                    city: Cotonou
+                    country: BJ
+                    details: ""
+                  items:
+                    - name: Robe wax
+                      variant: Taille L
+                      sku: RW-40
+                      quantity: 1
+                      unit_price: 7500
+                      product_id: "771204958321467"
+                  cod_amount: 7500
+                  delivery_fee: 1500
+                  delivery_fee_included: true
+                  currency: XOF
+                  payment:
+                    status: unpaid
+                    paid_amount: 0
+                  note: ""
+                  external_reference: ""
+                  rider:
+                    name: ""
+                    phone: ""
+                  reason: Le client a changé d'avis
+                  photo_url: ""
+                  rescheduled_for: null
+                  created_at: "2026-10-22T11:48:20.337415+00:00"
+                  updated_at: "2026-10-22T12:05:33.106248+00:00"
+                  closed_at: null
+                  events:
+                    - status: assigned
+                      previous_status: ""
+                      reason: ""
+                      actor: merchant
+                      occurred_at: "2026-10-22T11:48:20.339012+00:00"
+                      recorded_at: "2026-10-22T11:48:20.339560+00:00"
+                    - status: accepted
+                      previous_status: assigned
+                      reason: ""
+                      actor: system
+                      occurred_at: "2026-10-22T11:48:20.341277+00:00"
+                      recorded_at: "2026-10-22T11:48:20.341802+00:00"
+                    - status: cancelled
+                      previous_status: accepted
+                      reason: Le client a changé d'avis
+                      actor: merchant
+                      occurred_at: "2026-10-22T12:05:33.104772+00:00"
+                      recorded_at: "2026-10-22T12:05:33.105390+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  shipment.updated:
+    post:
+      operationId: onShipmentUpdated
+      tags: [Webhooks]
+      summary: shipment.updated
+      description: |
+        Une livraison active a changé du côté de la commande ou du marchand :
+        adresse ou client, articles, montant à encaisser, frais, paiement,
+        note. `data.changed_fields` liste les champs de la livraison qui ont
+        changé depuis ce que vous en connaissiez, parmi `order_id`,
+        `order_number`, `merchant`, `customer`, `items`, `cod_amount`,
+        `delivery_fee`, `delivery_fee_included`, `currency`, `payment`, `note`.
+
+        Le `updated_at` de la livraison avance au même moment (visible avec
+        `GET /shipments?updated_since=`).
+
+        Ne part pas pour ce que vos propres déclarations
+        (`POST /shipments/{id}/events`) changent à la commande (frais réels
+        avec `delivered`, note), ni pour un statut (voir
+        `shipment.status_changed`). Le suivi ne se fait que pour une société
+        qui a, dans l'environnement, une clé active ou un point de webhook.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentUpdatedEvent"
+            example:
+              id: evt_2f8c4a6e0b1d4c9e8a7f3b5d1c9e0a4b
+              object: event
+              type: shipment.updated
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T10:15:48.229164+00:00"
+              data:
+                changed_fields: [cod_amount, payment]
+                shipment:
+                  id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+                  object: shipment
+                  status: accepted
+                  mode: pickup
+                  active: true
+                  order_id: "393093856815339"
+                  order_number: "#0412"
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                    phone: "+22997000000"
+                    country: BJ
+                    pickup_address: Marché Dantokpa, allée 4, Cotonou
+                  customer:
+                    name: Koffi Mensah
+                    phone: "+22996000000"
+                    address: Fidjrossè, rue 12
+                    city: Cotonou
+                    country: BJ
+                    details: Portail bleu après la pharmacie
+                  items:
+                    - name: Robe wax
+                      variant: Taille M
+                      sku: RW-38
+                      quantity: 2
+                      unit_price: 7500
+                      product_id: "771204958321467"
+                  cod_amount: 9000
+                  delivery_fee: 1500
+                  delivery_fee_included: true
+                  currency: XOF
+                  payment:
+                    status: partially_paid
+                    paid_amount: 6000
+                  note: Appeler avant de passer
+                  external_reference: EXP-2026-000123
+                  rider:
+                    name: Ibrahim Sanni
+                    phone: "+22990000000"
+                  reason: ""
+                  photo_url: ""
+                  rescheduled_for: null
+                  created_at: "2026-10-22T09:12:03.418225+00:00"
+                  updated_at: "2026-10-22T10:15:48.227330+00:00"
+                  closed_at: null
+                  events:
+                    - status: assigned
+                      previous_status: ""
+                      reason: ""
+                      actor: merchant
+                      occurred_at: "2026-10-22T09:12:03.420331+00:00"
+                      recorded_at: "2026-10-22T09:12:03.421007+00:00"
+                    - status: accepted
+                      previous_status: assigned
+                      reason: ""
+                      actor: api
+                      occurred_at: "2026-10-22T09:20:46.998104+00:00"
+                      recorded_at: "2026-10-22T09:20:46.999381+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  partnership.requested:
+    post:
+      operationId: onPartnershipRequested
+      tags: [Webhooks]
+      summary: partnership.requested
+      description: |
+        Un marchand demande à travailler avec votre société (création d'une
+        demande, ou relance après un refus : `data.previous_status` donne
+        alors l'ancien statut). Répondez avec
+        `POST /merchants/{shop_id}/accept` ou `/refuse`.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnershipRequestedEvent"
+            example:
+              id: evt_5d0e2b8f4c6a4e1b9d3f7a0c2e8b6d4a
+              object: event
+              type: partnership.requested
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T10:04:51.741558+00:00"
+              data:
+                changed_fields: [status]
+                merchant:
+                  id: 0d7c4e2a-9b13-4f6e-8a25-c1e9f3b7d064
+                  name: Chez Awa Couture
+                  phone: "+22961000000"
+                  country: BJ
+                  pickup_address: ""
+                  partnership:
+                    id: 5a2e8c1f-7d34-4b9a-a6e0-3f8b1c5d9e27
+                    status: pending
+                    stock_mode: depot
+                    auto_accept: true
+                    message: Bonjour, pouvez-vous livrer nos commandes à Cotonou ?
+                    response_message: ""
+                    requested_at: "2026-10-22T10:04:51.733902+00:00"
+                    responded_at: null
+                    updated_at: "2026-10-22T10:04:51.733902+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  partnership.updated:
+    post:
+      operationId: onPartnershipUpdated
+      tags: [Webhooks]
+      summary: partnership.updated
+      description: |
+        Un partenariat a changé de statut ou de réglage (mode de stock,
+        acceptation d'office, adresse de ramassage), quel qu'en soit l'auteur,
+        **y compris votre société** (acceptation ou refus par l'API).
+        `data.changed_fields` liste les champs changés ; `data.previous_status`
+        n'est présent que si le statut a changé. Un partenariat créé
+        directement accepté (lien ou invitation acceptés par le marchand) part
+        aussi ici, avec `changed_fields: ["status"]` et sans
+        `previous_status`.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnershipUpdatedEvent"
+            example:
+              id: evt_8e4b1d7a3f9c4e2b8a6d0f5c3e1b7a9d
+              object: event
+              type: partnership.updated
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-21T07:45:19.214660+00:00"
+              data:
+                changed_fields: [stock_mode, auto_accept, pickup_address]
+                merchant:
+                  id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                  name: Boutique Awa
+                  phone: "+22997000000"
+                  country: BJ
+                  pickup_address: Marché Dantokpa, allée 4, Cotonou
+                  partnership:
+                    id: e1c7a9f4-2b6d-4e3a-8f05-9d4c7b2a1e68
+                    status: accepted
+                    stock_mode: pickup
+                    auto_accept: false
+                    message: Invitation de Livraisons Express acceptée par le marchand.
+                    response_message: ""
+                    requested_at: "2026-10-20T14:22:08.115630+00:00"
+                    responded_at: "2026-10-20T14:22:08.115204+00:00"
+                    updated_at: "2026-10-21T07:45:19.208311+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  merchant_invitation.accepted:
+    post:
+      operationId: onMerchantInvitationAccepted
+      tags: [Webhooks]
+      summary: merchant_invitation.accepted
+      description: |
+        Un marchand a accepté de travailler avec votre société, par votre lien
+        d'invitation (`via: link`, `invitation.id` nul) ou par une invitation
+        envoyée à son contact (`via: contact`, `invitation.id` = l'`id` rendu
+        par `POST /merchant-invitations`). `partnership.updated` part aussi.
+        Rien ne part si la boutique était déjà reliée à votre société, par le
+        lien comme par une invitation.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantInvitationAcceptedEvent"
+            example:
+              id: evt_1c9a7e5b3d0f4a2c8e6b4d2f0a8c6e4b
+              object: event
+              type: merchant_invitation.accepted
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-20T14:22:08.121947+00:00"
+              data:
+                invitation:
+                  id: f0a6c3e9-1b4d-4a7f-8c2e-5d9b1e3a7c40
+                  via: contact
+                  accepted_at: "2026-10-20T14:22:08.116402+00:00"
+                merchant:
+                  id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                  name: Boutique Awa
+                  phone: "+22997000000"
+                  country: BJ
+                  pickup_address: ""
+                  partnership:
+                    id: e1c7a9f4-2b6d-4e3a-8f05-9d4c7b2a1e68
+                    status: accepted
+                    stock_mode: depot
+                    auto_accept: true
+                    message: Invitation de Livraisons Express acceptée par le marchand.
+                    response_message: ""
+                    requested_at: "2026-10-20T14:22:08.115630+00:00"
+                    responded_at: "2026-10-20T14:22:08.115204+00:00"
+                    updated_at: "2026-10-20T14:22:08.115630+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  stock_transfer.requested:
+    post:
+      operationId: onStockTransferRequested
+      tags: [Webhooks]
+      summary: stock_transfer.requested
+      description: |
+        Un marchand envoie du stock vers votre dépôt. Acceptez ou refusez avec
+        `POST /stock-transfers/{id}/accept` ou `/refuse`.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockTransferRequestedEvent"
+            example:
+              id: evt_6a3c9e1f7b5d4a0c8e2f6b4d0a9c7e5f
+              object: event
+              type: stock_transfer.requested
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T11:30:14.668093+00:00"
+              data:
+                stock_transfer:
+                  id: c2d8f1a6-4e7b-4a39-b5c0-8e1f3d6a9b27
+                  object: stock_transfer
+                  status: pending
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                  product:
+                    id: "771204958321467"
+                    name: Robe wax
+                    sku: RW-38
+                  quantity: 6
+                  comment: Six robes taille M pour la semaine
+                  rejection_reason: ""
+                  created_at: "2026-10-22T11:30:14.660281+00:00"
+                  validated_at: null
+                  updated_at: "2026-10-22T11:30:14.660281+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  stock_transfer.updated:
+    post:
+      operationId: onStockTransferUpdated
+      tags: [Webhooks]
+      summary: stock_transfer.updated
+      description: |
+        Un transfert a changé de statut (accepté, refusé, annulé), quel qu'en
+        soit l'auteur, y compris votre société. `data.previous_status` est le
+        statut d'avant.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockTransferUpdatedEvent"
+            example:
+              id: evt_0b8d6f4a2c9e4b7d8f1a3c5e7b9d2f4a
+              object: event
+              type: stock_transfer.updated
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T11:47:30.890716+00:00"
+              data:
+                previous_status: pending
+                stock_transfer:
+                  id: c2d8f1a6-4e7b-4a39-b5c0-8e1f3d6a9b27
+                  object: stock_transfer
+                  status: accepted
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                  product:
+                    id: "771204958321467"
+                    name: Robe wax
+                    sku: RW-38
+                  quantity: 6
+                  comment: Six robes taille M pour la semaine
+                  rejection_reason: ""
+                  created_at: "2026-10-22T11:30:14.660281+00:00"
+                  validated_at: "2026-10-22T11:47:30.884012+00:00"
+                  updated_at: "2026-10-22T11:47:30.884530+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  stock_return.created:
+    post:
+      operationId: onStockReturnCreated
+      tags: [Webhooks]
+      summary: stock_return.created
+      description: |
+        Un retour de stock a été créé (y compris par votre société, avec
+        `POST /stock-returns`).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockReturnCreatedEvent"
+            example:
+              id: evt_9f7d5b3a1e8c4f6a9d2b0e4c6a8f1d3b
+              object: event
+              type: stock_return.created
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T16:05:44.325019+00:00"
+              data:
+                stock_return:
+                  id: a9e3b7c1-6d2f-4b8a-9e40-5f7c1d3b8e62
+                  object: stock_return
+                  status: pending
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                  product:
+                    id: "771204958321467"
+                    name: Robe wax
+                    sku: RW-38
+                  quantity: 3
+                  reason: Fin de saison, invendus
+                  created_at: "2026-10-22T16:05:44.318760+00:00"
+                  validated_at: null
+                  updated_at: "2026-10-22T16:05:44.318760+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  stock_return.updated:
+    post:
+      operationId: onStockReturnUpdated
+      tags: [Webhooks]
+      summary: stock_return.updated
+      description: |
+        Le marchand a accepté ou refusé un retour de stock.
+        `data.previous_status` est le statut d'avant.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockReturnUpdatedEvent"
+            example:
+              id: evt_3e1c9a7f5d2b4e0c8a6f4d2b0e9c7a5f
+              object: event
+              type: stock_return.updated
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T18:11:02.507433+00:00"
+              data:
+                previous_status: pending
+                stock_return:
+                  id: a9e3b7c1-6d2f-4b8a-9e40-5f7c1d3b8e62
+                  object: stock_return
+                  status: accepted
+                  merchant:
+                    id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+                    name: Boutique Awa
+                  product:
+                    id: "771204958321467"
+                    name: Robe wax
+                    sku: RW-38
+                  quantity: 3
+                  reason: Fin de saison, invendus
+                  created_at: "2026-10-22T16:05:44.318760+00:00"
+                  validated_at: "2026-10-22T18:11:02.498105+00:00"
+                  updated_at: "2026-10-22T18:11:02.498622+00:00"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  ping:
+    post:
+      operationId: onPing
+      tags: [Webhooks]
+      summary: ping
+      description: |
+        L'événement de test envoyé par `POST /webhook-endpoints/{id}/ping`, au
+        seul point visé, quel que soit son abonnement. On ne peut pas
+        s'abonner à `ping`.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PingEvent"
+            example:
+              id: evt_9a4e1c7b3d2f4a8e9b6c0d5e7f1a3b2c
+              object: event
+              type: ping
+              api_version: "2026-10-22"
+              environment: live
+              occurred_at: "2026-10-22T08:42:05.509114+00:00"
+              data:
+                ping:
+                  endpoint_id: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+                  message: Bonjour de Woura.
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+# ════════════════════════════════════════════════════════════════════════
+# Composants
+# ════════════════════════════════════════════════════════════════════════
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: wk_live_… / wk_test_…
+      description: |
+        `Authorization: Bearer <clé>`. Une clé : `wk_live_` ou `wk_test_`,
+        puis 40 caractères alphanumériques. Le secret entier n'est montré
+        qu'une fois, à sa création par Woura. Le jeton de connexion des
+        applications Woura n'est pas accepté ici, et la clé n'ouvre aucune
+        autre route de Woura.
+
+        - `401 invalid_api_key` : en-tête absent ou mal formé, clé inconnue
+          ou révoquée (dès la révocation), compte de la société désactivé.
+        - `403 company_inactive` : société désactivée par Woura.
+        - `403 partner_suspended` : compte partenaire suspendu.
+        - `403 company_not_verified` : clé live d'une société qui n'est plus
+          vérifiée.
+
+        Révoquer une clé désactive aussi les points de webhook créés avec elle
+        (motif « Clé API qui l'a créé révoquée. ») et abandonne leurs envois
+        en attente. Réactivez-les avec votre nouvelle clé du même
+        environnement (`PATCH /webhook-endpoints/{id}`, `enabled: true`).
+
+  headers:
+    IdempotentReplayed:
+      description: |
+        `true` quand la réponse est celle d'un premier envoi avec la même
+        `Idempotency-Key`, rendue sans rien refaire. Absent sinon.
+      schema:
+        type: string
+        const: "true"
+    RetryAfter:
+      description: Secondes à attendre avant de réessayer.
+      schema:
+        type: integer
+        minimum: 1
+      example: 12
+    WWWAuthenticate:
+      description: Toujours `Bearer realm="api-partenaires"`.
+      schema:
+        type: string
+        const: Bearer realm="api-partenaires"
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Identifiant unique de la requête (un UUID, par exemple), 255
+        caractères au plus (`400` sinon). Renvoyée avec le même corps, la
+        requête rend la réponse du premier envoi sans rien refaire
+        (`Idempotent-Replayed: true`) ; avec une autre méthode, un autre
+        chemin (comparé sans barre finale) ou un autre corps :
+        `409 idempotency_key_reused`. Seules les réponses 2xx sont gardées,
+        pendant 7 jours, par clé API.
+      schema:
+        type: string
+        maxLength: 255
+      example: 3b1f6c2e-9a4d-4e7b-8c05-d2f9a1b6e384
+    Page:
+      name: page
+      in: query
+      required: false
+      description: "Numéro de page, à partir de 1. Au-delà de la dernière page : `404`."
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      description: Éléments par page. Au-delà de 100, 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ShopId:
+      name: shop_id
+      in: path
+      required: true
+      description: Identifiant de la boutique du marchand.
+      schema:
+        type: string
+        format: uuid
+      example: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+    ShipmentId:
+      name: shipment_id
+      in: path
+      required: true
+      description: Identifiant de la livraison.
+      schema:
+        type: string
+        format: uuid
+      example: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+    TransferId:
+      name: transfer_id
+      in: path
+      required: true
+      description: Identifiant du transfert de stock.
+      schema:
+        type: string
+        format: uuid
+      example: c2d8f1a6-4e7b-4a39-b5c0-8e1f3d6a9b27
+    ReturnId:
+      name: return_id
+      in: path
+      required: true
+      description: Identifiant du retour de stock.
+      schema:
+        type: string
+        format: uuid
+      example: a9e3b7c1-6d2f-4b8a-9e40-5f7c1d3b8e62
+    EndpointId:
+      name: endpoint_id
+      in: path
+      required: true
+      description: Identifiant du point de webhook.
+      schema:
+        type: string
+        format: uuid
+      example: d5a1c8e3-7f2b-4c69-a0d4-3b8e6f1c9a57
+    DeliveryId:
+      name: delivery_id
+      in: path
+      required: true
+      description: Identifiant de l'envoi de webhook.
+      schema:
+        type: string
+        format: uuid
+      example: 8b3e5d71-2c9a-4f06-b8e1-6a4d0c7f2e93
+    WebhookSignature:
+      name: Woura-Signature
+      in: header
+      required: true
+      description: |
+        `t=<horodatage Unix>,v1=<signature>`. `signature` = HMAC-SHA256, en
+        hexadécimal, de la chaîne `"<t>.<corps brut>"`, avec le secret du
+        point. Recalculée à chaque tentative (nouvel horodatage) : refusez un
+        `t` trop ancien pour empêcher le rejeu d'un vieux corps, et comparez
+        les signatures à temps constant. Vérifiez sur le corps brut reçu (JSON
+        compact, UTF-8), pas sur un JSON réencodé.
+      schema:
+        type: string
+        pattern: "^t=[0-9]+,v1=[0-9a-f]{64}$"
+      example: t=1792660324,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+    WebhookEventType:
+      name: Woura-Event
+      in: header
+      required: true
+      description: Le type de l'événement (`type` du corps).
+      schema:
+        $ref: "#/components/schemas/WebhookEventTypeOrPing"
+      example: shipment.assigned
+    WebhookEventId:
+      name: Woura-Event-Id
+      in: header
+      required: true
+      description: |
+        L'identifiant de l'événement (`id` du corps). Un même événement peut
+        arriver plus d'une fois (réponse perdue, renvoi) : dédoublonnez sur
+        lui.
+      schema:
+        type: string
+        pattern: "^evt_[0-9a-f]{32}$"
+      example: evt_4c1f8e2a9b7d4e6f8a0c3b5d7e9f1a2c
+    WebhookDeliveryId:
+      name: Woura-Delivery-Id
+      in: header
+      required: true
+      description: |
+        L'identifiant de l'envoi (`id` dans `/webhook-deliveries`). Un renvoi
+        a un nouvel identifiant d'envoi ; l'événement garde le sien.
+      schema:
+        type: string
+        format: uuid
+      example: 8b3e5d71-2c9a-4f06-b8e1-6a4d0c7f2e93
+    WebhookUserAgent:
+      name: User-Agent
+      in: header
+      required: true
+      schema:
+        type: string
+        const: Woura-Webhooks/1.0 (+https://docs.woura.africa)
+
+  responses:
+    WebhookReceived:
+      description: |
+        Reçu. Toute réponse 2xx en moins de 10 secondes vaut réception. Une
+        autre réponse, une redirection (non suivie), un délai dépassé ou une
+        panne réseau est un échec : nouvel essai (voir `WebhookDelivery`).
+    BadRequest:
+      description: |
+        `validation_error` : champ manquant, mal formé ou inconnu (`details`
+        par champ, ou `non_field_errors`), paramètre de requête invalide, corps
+        JSON illisible ou qui n'est pas un objet, `Idempotency-Key` de plus de
+        255 caractères, ou refus d'une règle métier (statut, motif, date,
+        stock).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            champ_inconnu:
+              summary: Champ inconnu et champ manquant
+              value:
+                code: validation_error
+                message: Ce champ est obligatoire. Champ inconnu.
+                details:
+                  status: [Ce champ est obligatoire.]
+                  staus: [Champ inconnu.]
+            motif:
+              summary: Motif obligatoire pour ce statut
+              value:
+                code: validation_error
+                message: Le motif est obligatoire pour ce statut.
+                details:
+                  reason: [Le motif est obligatoire pour ce statut.]
+            imbrique:
+              summary: Erreurs dans des objets imbriqués
+              value:
+                code: validation_error
+                message: Assurez-vous que cette valeur est supérieure ou égale à 1. Champ inconnu.
+                details:
+                  items[1].quantity: [Assurez-vous que cette valeur est supérieure ou égale à 1.]
+                  customer.nom: [Champ inconnu.]
+            corps:
+              summary: Corps qui n'est pas un objet JSON
+              value:
+                code: validation_error
+                message: Le corps doit être un objet JSON.
+                details: {}
+            filtre:
+              summary: Paramètre de requête invalide
+              value:
+                code: validation_error
+                message: "Statut inconnu : shipped."
+                details: {}
+    BadRequestWebhookUrl:
+      description: |
+        `validation_error` (champ manquant, mal formé ou inconnu ; événement
+        inconnu dans `events`) ou `invalid_url` : URL refusée (pas `https`,
+        identifiants dans l'URL, nom introuvable ou trop lent à résoudre,
+        adresse non publique, plus de 500 caractères, port invalide).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            url:
+              summary: URL refusée
+              value:
+                code: invalid_url
+                message: Seules les URL https sont acceptées.
+                details:
+                  url: [Seules les URL https sont acceptées.]
+            prive:
+              summary: Adresse non publique
+              value:
+                code: invalid_url
+                message: Cette adresse n'est pas publique.
+                details:
+                  url: [Cette adresse n'est pas publique.]
+    Unauthorized:
+      description: |
+        `invalid_api_key` : en-tête `Authorization` absent ou mal formé, clé
+        inconnue ou révoquée, compte de la société désactivé.
+      headers:
+        WWW-Authenticate:
+          $ref: "#/components/headers/WWWAuthenticate"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: invalid_api_key
+            message: Clé API inconnue ou révoquée.
+            details: {}
+    Forbidden:
+      description: |
+        `company_inactive` (société désactivée par Woura),
+        `partner_suspended` (compte partenaire suspendu) ou
+        `company_not_verified` (clé live d'une société qui n'est plus
+        vérifiée).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: company_not_verified
+            message: Les clés live ne fonctionnent que pour une entreprise vérifiée par Woura.
+            details: {}
+    ForbiddenTestOnly:
+      description: |
+        `test_key_required` : route réservée aux clés de test. Ou, comme
+        partout, `company_inactive`, `partner_suspended`,
+        `company_not_verified`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: test_key_required
+            message: Route réservée aux clés de test (wk_test_…).
+            details: {}
+    NotFound:
+      description: |
+        `not_found` : ressource inexistante, ou qui n'est pas à votre société
+        (ou pas à l'environnement de la clé), ou page au-delà de la dernière.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: not_found
+            message: Livraison introuvable.
+            details: {}
+    UnsupportedMediaType:
+      description: "`unsupported_media_type` : corps envoyé avec un autre type que `application/json`."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: unsupported_media_type
+            message: "Envoyez du JSON (Content-Type: application/json)."
+            details: {}
+    RateLimited:
+      description: |
+        `rate_limited` : 300 requêtes par minute et par clé dépassées (ou 30
+        par heure sur `POST /merchant-invitations`, ou 10 par minute sur
+        `POST /webhook-endpoints/{id}/ping`).
+      headers:
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: rate_limited
+            message: Trop de requêtes. Réessayez plus tard.
+            details: {}
+    InternalError:
+      description: "`internal_error` : erreur inattendue chez Woura. Réessayez ; si elle persiste, contactez Woura."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: internal_error
+            message: Erreur interne. Réessayez ; si elle persiste, contactez Woura.
+            details: {}
+    SandboxLimitConflict:
+      description: |
+        `sandbox_limit_reached` : plafond du bac à sable atteint (500 commandes
+        de test ou 200 transferts de test par 24 heures, 20 marchands fictifs
+        en tout) ; `idempotency_key_reused`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: sandbox_limit_reached
+            message: "Bac à sable : 500 commandes de test par 24 h au plus."
+            details: {}
+    IdempotencyConflict:
+      description: "`idempotency_key_reused` : cette `Idempotency-Key` a déjà servi pour une autre requête."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: idempotency_key_reused
+            message: Cette clé d'idempotence a déjà servi pour une autre requête.
+            details: {}
+    ShipmentConflict:
+      description: |
+        - `transition_not_allowed` : passage non permis depuis le statut actuel ;
+        - `shipment_closed` : livraison close (commande réassignée, refusée ou
+          remise en attente) ;
+        - `idempotency_key_reused` : même `Idempotency-Key`, autre contenu ;
+        - `conflict` : refus d'un service de Woura (stock de votre dépôt
+          refusé à la livraison, par exemple).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            transition:
+              summary: Passage non permis
+              value:
+                code: transition_not_allowed
+                message: Passage de delivered à in_transit non permis.
+                details: {}
+            close:
+              summary: Livraison close
+              value:
+                code: shipment_closed
+                message: "Cette livraison est close : la commande a été réassignée, refusée ou remise en attente."
+                details: {}
+    TestShipmentConflict:
+      description: |
+        `shipment_closed` : livraison close (ou, pour `cancel`, déjà
+        terminée) ; `idempotency_key_reused`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: shipment_closed
+            message: Cette livraison est déjà terminée ou close.
+            details: {}
+    PartnershipAcceptConflict:
+      description: |
+        `partnership_not_pending` (le partenariat n'est pas en attente),
+        `merchant_plan_limit` (la boutique a atteint le nombre de livreurs
+        permis par son plan), `idempotency_key_reused`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            pas_en_attente:
+              summary: Pas en attente
+              value:
+                code: partnership_not_pending
+                message: Seule une demande en attente peut être acceptée.
+                details: {}
+            plan:
+              summary: Limite du plan du marchand
+              value:
+                code: merchant_plan_limit
+                message: Cette boutique a atteint le nombre de livreurs permis par son plan.
+                details: {}
+    PartnershipRefuseConflict:
+      description: "`partnership_not_pending` (le partenariat n'est pas en attente), `idempotency_key_reused`."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: partnership_not_pending
+            message: Seule une demande en attente peut être refusée.
+            details: {}
+    TransferConflict:
+      description: "`transfer_not_pending` (le transfert n'est pas en attente), `idempotency_key_reused`."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: transfer_not_pending
+            message: Seul un transfert en attente peut être accepté.
+            details: {}
+    StockReturnConflict:
+      description: |
+        `conflict` : produit absent de votre stock, ou quantité supérieure à
+        votre stock ; `idempotency_key_reused`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: conflict
+            message: "Stock insuffisant. Disponible: 4, demandé: 9"
+            details: {}
+    EndpointCreateConflict:
+      description: "`too_many_endpoints` (10 points au plus par environnement), `idempotency_key_reused`."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: too_many_endpoints
+            message: 10 points de webhook au plus par environnement.
+            details: {}
+    EndpointDisabledConflict:
+      description: "`endpoint_disabled` : le point est désactivé (ou supprimé) ; `idempotency_key_reused`."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: endpoint_disabled
+            message: "Ce point est désactivé : réactivez-le (enabled: true) avant de le tester."
+            details: {}
+
+  schemas:
+
+    # ── Erreur et pagination ────────────────────────────────────────────
+
+    Error:
+      type: object
+      description: Le format de toute erreur de l'API.
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+          description: |
+            Code stable, à utiliser dans votre code :
+
+            | HTTP | `code` |
+            |---|---|
+            | 400 | `validation_error`, `invalid_url` |
+            | 401 | `invalid_api_key` |
+            | 403 | `company_inactive`, `partner_suspended`, `company_not_verified`, `test_key_required`, `forbidden` |
+            | 404 | `not_found` |
+            | 405 | `method_not_allowed` |
+            | 409 | `transition_not_allowed`, `shipment_closed`, `idempotency_key_reused`, `conflict`, `merchant_plan_limit`, `partnership_not_pending`, `transfer_not_pending`, `too_many_endpoints`, `endpoint_disabled`, `sandbox_limit_reached` |
+            | 415 | `unsupported_media_type` |
+            | 429 | `rate_limited` |
+            | 500 | `internal_error` |
+
+            `forbidden` : un refus d'accès venu d'un service de Woura, sans
+            code plus précis. `error` : toute autre erreur HTTP de moins de
+            500 sans code plus précis (le statut HTTP fait foi).
+          enum:
+            - validation_error
+            - invalid_url
+            - invalid_api_key
+            - forbidden
+            - company_inactive
+            - partner_suspended
+            - company_not_verified
+            - test_key_required
+            - not_found
+            - method_not_allowed
+            - transition_not_allowed
+            - shipment_closed
+            - idempotency_key_reused
+            - conflict
+            - merchant_plan_limit
+            - partnership_not_pending
+            - transfer_not_pending
+            - too_many_endpoints
+            - endpoint_disabled
+            - sandbox_limit_reached
+            - unsupported_media_type
+            - rate_limited
+            - internal_error
+            - error
+        message:
+          type: string
+          description: Message lisible, en français (messages de validation génériques selon `Accept-Language`).
+        details:
+          type: object
+          description: |
+            Erreurs par champ, à plat, chacune une liste de messages. Clés :
+            noms publics des champs, indices entre crochets et sous-champs
+            après un point pour les objets imbriqués (`items[1].quantity`,
+            `customer.name`), ou `non_field_errors`. Objet vide sinon.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    Pagination:
+      type: object
+      required: [count, next, previous]
+      properties:
+        count:
+          type: integer
+          description: Nombre total d'éléments, toutes pages confondues.
+        next:
+          type: [string, "null"]
+          format: uri
+          description: Adresse de la page suivante, `null` sur la dernière.
+        previous:
+          type: [string, "null"]
+          format: uri
+          description: Adresse de la page précédente, `null` sur la première.
+
+    PaginatedMerchants:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/Merchant"
+    PaginatedShipments:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/Shipment"
+    PaginatedStockLevels:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockLevel"
+    PaginatedStockTransfers:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockTransfer"
+    PaginatedStockReturns:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockReturn"
+    PaginatedWebhookEndpoints:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/WebhookEndpoint"
+    PaginatedWebhookDeliveries:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/WebhookDelivery"
+
+    # ── Valeurs ─────────────────────────────────────────────────────────
+
+    Amount:
+      type: number
+      description: |
+        Montant en unités de la devise : entier quand il l'est (le franc CFA
+        n'a pas de décimales), sinon deux décimales.
+      example: 15000
+    DateTime:
+      type: string
+      format: date-time
+      description: Date ISO 8601 avec fuseau.
+      example: "2026-10-22T09:12:03.418225+00:00"
+    NullableDateTime:
+      type: [string, "null"]
+      format: date-time
+      description: Date ISO 8601 avec fuseau, ou `null`.
+    Environment:
+      type: string
+      enum: [live, test]
+      description: "`live` ou `test`, selon la clé."
+    ShipmentStatus:
+      type: string
+      description: |
+        - `assigned` : confiée à votre société, en attente de votre réponse ;
+        - `accepted` : acceptée (par vous, ou d'office) ;
+        - `refused` : refusée par vous (finale, livraison close) ;
+        - `picked_up` : colis ramassé chez le marchand (mode `pickup`) ;
+        - `in_transit` : en route vers le client ;
+        - `delivered` : livrée (finale) ;
+        - `failed` : tentative échouée ;
+        - `rescheduled` : reportée à `rescheduled_for` ;
+        - `returned` : retournée au marchand (finale) ;
+        - `cancelled` : annulée (finale).
+      enum: [assigned, accepted, refused, picked_up, in_transit, delivered, failed, rescheduled, returned, cancelled]
+    DeclarableShipmentStatus:
+      type: string
+      description: Les statuts que vous pouvez déclarer (tous sauf `assigned`).
+      enum: [accepted, refused, picked_up, in_transit, delivered, failed, rescheduled, returned, cancelled]
+    StockMode:
+      type: string
+      description: |
+        `depot` : vous détenez le stock du marchand (transferts) ; il est
+        contrôlé quand le colis part en livraison. `pickup` : vous passez
+        prendre le colis chez le marchand, à `pickup_address`.
+      enum: [depot, pickup]
+    PartnershipStatus:
+      type: string
+      enum: [pending, accepted, refused, suspended, terminated]
+    StockTransferStatus:
+      type: string
+      enum: [pending, accepted, refused, cancelled]
+    StockReturnStatus:
+      type: string
+      enum: [pending, accepted, refused]
+    WebhookDeliveryStatus:
+      type: string
+      description: |
+        - `pending` : pas encore tenté ;
+        - `retrying` : échec, nouvel essai prévu (`next_attempt_at`) ;
+        - `succeeded` : réponse 2xx reçue ;
+        - `failed` : abandonné (tentatives épuisées, point désactivé ou
+          supprimé, société qui ne peut plus rien recevoir).
+      enum: [pending, retrying, succeeded, failed]
+    EventType:
+      type: string
+      description: Les événements auxquels un point peut s'abonner.
+      enum:
+        - shipment.assigned
+        - shipment.updated
+        - shipment.cancelled
+        - shipment.status_changed
+        - partnership.requested
+        - partnership.updated
+        - merchant_invitation.accepted
+        - stock_transfer.requested
+        - stock_transfer.updated
+        - stock_return.created
+        - stock_return.updated
+    WebhookEventTypeOrPing:
+      type: string
+      description: Tous les types d'événements, `ping` compris.
+      enum:
+        - shipment.assigned
+        - shipment.updated
+        - shipment.cancelled
+        - shipment.status_changed
+        - partnership.requested
+        - partnership.updated
+        - merchant_invitation.accepted
+        - stock_transfer.requested
+        - stock_transfer.updated
+        - stock_return.created
+        - stock_return.updated
+        - ping
+
+    # ── Société ─────────────────────────────────────────────────────────
+
+    Company:
+      type: object
+      required: [id, object, name, environment, verified, country, programs, api_key, invitation_link, rate_limit]
+      properties:
+        id:
+          type: string
+          format: uuid
+        object:
+          type: string
+          const: delivery_company
+        name:
+          type: string
+        environment:
+          $ref: "#/components/schemas/Environment"
+        verified:
+          type: boolean
+          description: Société vérifiée par Woura (condition des clés live).
+        country:
+          type: string
+          description: Code pays de la société, chaîne vide s'il n'est pas renseigné.
+        programs:
+          type: array
+          items:
+            type: string
+            const: delivery
+        api_key:
+          type: object
+          required: [prefix, created_at]
+          properties:
+            prefix:
+              type: string
+              description: Le début visible de la clé utilisée (`wk_live_` ou `wk_test_` et 12 caractères).
+            created_at:
+              $ref: "#/components/schemas/DateTime"
+        invitation_link:
+          type: [string, "null"]
+          format: uri
+          description: Votre lien d'invitation pour les marchands ; `null` avec une clé de test.
+        rate_limit:
+          type: string
+          description: Limite de débit réellement appliquée à chaque clé (toutes routes).
+          example: 300/min
+
+    # ── Marchands ───────────────────────────────────────────────────────
+
+    MerchantSummary:
+      type: object
+      description: |
+        Une boutique. `name`, `phone`, `country` et `pickup_address` ne sont
+        présents que pour un partenariat en attente, accepté ou suspendu (ou
+        sans partenariat, dans une livraison) ; un partenariat refusé ou
+        résilié ne montre que `id`.
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+          description: Numéro WhatsApp de la boutique, sinon son téléphone, sinon celui du marchand ; chaîne vide à défaut.
+        country:
+          type: string
+          description: Code pays de la boutique, chaîne vide à défaut.
+        pickup_address:
+          type: string
+          description: Adresse de ramassage fixée dans le partenariat, chaîne vide à défaut.
+    Merchant:
+      description: Une boutique et son partenariat avec votre société.
+      allOf:
+        - $ref: "#/components/schemas/MerchantSummary"
+        - type: object
+          required: [partnership]
+          properties:
+            partnership:
+              $ref: "#/components/schemas/Partnership"
+    Partnership:
+      type: object
+      required: [id, status, stock_mode, auto_accept, message, response_message, requested_at, responded_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/PartnershipStatus"
+        stock_mode:
+          $ref: "#/components/schemas/StockMode"
+        auto_accept:
+          type: boolean
+          description: Les livraisons de ce marchand arrivent déjà `accepted` (réglage du marchand).
+        message:
+          type: string
+          description: Message de la demande ; chaîne vide pour un partenariat refusé ou résilié.
+        response_message:
+          type: string
+          description: Votre réponse à la demande.
+        requested_at:
+          $ref: "#/components/schemas/DateTime"
+        responded_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+    MerchantRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    MerchantInvitation:
+      type: object
+      required: [id, object, status, message]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: |
+            Identifiant de l'invitation ; il revient dans
+            `merchant_invitation.accepted` (`data.invitation.id`) si le
+            marchand accepte.
+        object:
+          type: string
+          const: merchant_invitation
+        status:
+          type: string
+          const: accepted_for_processing
+        message:
+          type: string
+
+    # ── Livraisons ──────────────────────────────────────────────────────
+
+    Shipment:
+      type: object
+      description: |
+        Une livraison : la commande qu'un marchand confie à votre société. La
+        même forme dans les réponses de l'API et dans les webhooks.
+      required:
+        - id
+        - object
+        - status
+        - mode
+        - active
+        - order_id
+        - order_number
+        - merchant
+        - customer
+        - items
+        - cod_amount
+        - delivery_fee
+        - delivery_fee_included
+        - currency
+        - payment
+        - note
+        - external_reference
+        - rider
+        - reason
+        - photo_url
+        - rescheduled_for
+        - created_at
+        - updated_at
+        - closed_at
+        - events
+      properties:
+        id:
+          type: string
+          format: uuid
+        object:
+          type: string
+          const: shipment
+        status:
+          $ref: "#/components/schemas/ShipmentStatus"
+        mode:
+          $ref: "#/components/schemas/StockMode"
+        active:
+          type: boolean
+          description: |
+            `false` quand la livraison est close : refusée par vous, commande
+            réassignée, livreur retiré, commande remise en attente, ou reprise
+            après un statut final. Une livraison close n'évolue plus : ce qui
+            vient de la commande (`order_number`, `merchant`, `customer`,
+            `items`, `cod_amount`, `delivery_fee`, `delivery_fee_included`,
+            `currency`, `payment`, `note`…) est figé à la clôture, au dernier
+            contenu que Woura vous a publié, et ne suit plus les retouches du
+            marchand. À défaut de contenu publié, la commande actuelle, avec un
+            client vide.
+        order_id:
+          type: string
+          description: Identifiant de la commande chez Woura.
+        order_number:
+          type: string
+          description: Numéro de commande affiché au marchand, chaîne vide à défaut.
+        merchant:
+          oneOf:
+            - $ref: "#/components/schemas/MerchantSummary"
+            - type: "null"
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShipmentItem"
+        cod_amount:
+          $ref: "#/components/schemas/Amount"
+          description: |
+            Ce que votre livreur encaisse auprès du client : les articles
+            (moins ce que le client a déjà payé en ligne), plus les frais de
+            livraison quand ils ne sont pas inclus. Suit les retouches du
+            marchand tant que la livraison est active ; figé à sa clôture (le
+            montant enregistré sur la livraison).
+        delivery_fee:
+          $ref: "#/components/schemas/Amount"
+          description: Les frais de livraison de la commande (ou vos frais réels déclarés avec `delivered`). Figés à la clôture.
+        delivery_fee_included:
+          type: boolean
+          description: |
+            `true` : la course est à la charge du marchand. `false` : le
+            client la paie en plus, elle est comprise dans `cod_amount`.
+        currency:
+          type: string
+          description: Devise (code ISO 4217).
+          example: XOF
+        payment:
+          $ref: "#/components/schemas/ShipmentPayment"
+        note:
+          type: string
+          description: Note de la commande.
+        external_reference:
+          type: string
+          description: Votre référence (`PATCH /shipments/{id}` ou `events`).
+        rider:
+          type: object
+          required: [name, phone]
+          description: Le livreur que vous avez affecté (chaînes vides à défaut).
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+        reason:
+          type: string
+          description: Motif du dernier statut (refus, échec, report, annulation), chaîne vide sinon.
+        photo_url:
+          type: string
+          description: Dernière photo transmise (preuve de livraison, par exemple), chaîne vide à défaut.
+        rescheduled_for:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: Date de report quand `status` vaut `rescheduled`, `null` pour tout autre statut.
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+          description: Dernière modification de la livraison, y compris un changement de contenu signalé par `shipment.updated`.
+        closed_at:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: "Date de clôture (`active: false`), `null` tant que la livraison est active."
+        events:
+          type: array
+          description: Le journal complet, du plus ancien au plus récent.
+          items:
+            $ref: "#/components/schemas/ShipmentEvent"
+    Customer:
+      type: object
+      required: [name, phone, address, city, country, details]
+      description: Le client final (chaînes vides à défaut).
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+          description: Adresse de livraison (lignes 1 et 2).
+        city:
+          type: string
+        country:
+          type: string
+        details:
+          type: string
+          description: Précisions sur l'adresse (repères).
+    ShipmentItem:
+      type: object
+      required: [name, variant, sku, quantity, unit_price, product_id]
+      properties:
+        name:
+          type: string
+        variant:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          $ref: "#/components/schemas/Amount"
+        product_id:
+          type: [string, "null"]
+          description: Identifiant du produit chez Woura (celui de `/stock`), `null` pour un article sans produit.
+    ShipmentPayment:
+      type: object
+      required: [status, paid_amount]
+      description: Ce que le client a déjà payé en ligne.
+      properties:
+        status:
+          type: string
+          enum: [unpaid, partially_paid, paid]
+          description: "`partially_paid` : un acompte ; `paid` : payé en entier."
+        paid_amount:
+          $ref: "#/components/schemas/Amount"
+    ShipmentEvent:
+      type: object
+      description: Une ligne du journal de la livraison.
+      required: [status, previous_status, reason, actor, occurred_at, recorded_at]
+      properties:
+        status:
+          $ref: "#/components/schemas/ShipmentStatus"
+        previous_status:
+          type: string
+          description: Statut d'avant, chaîne vide pour la première ligne.
+          enum: ["", assigned, accepted, refused, picked_up, in_transit, delivered, failed, rescheduled, returned, cancelled]
+        reason:
+          type: string
+        actor:
+          type: string
+          description: |
+            Qui a fait le changement : `merchant`, `delivery_company` (votre
+            société, par l'application Woura Agent), `api` (votre société, par
+            l'API), `call_center`, `woura_staff`, `system`.
+          enum: [merchant, delivery_company, api, call_center, woura_staff, system]
+        occurred_at:
+          $ref: "#/components/schemas/DateTime"
+          description: Quand c'est arrivé (`occurred_at` déclaré, sinon l'heure d'écriture).
+        recorded_at:
+          $ref: "#/components/schemas/DateTime"
+          description: Quand Woura l'a écrit.
+
+    # ── Stock ───────────────────────────────────────────────────────────
+
+    Product:
+      type: object
+      required: [id, name, sku]
+      properties:
+        id:
+          type: string
+          description: Identifiant du produit chez Woura.
+        name:
+          type: string
+        sku:
+          type: string
+    StockLevel:
+      type: object
+      required: [merchant, product, quantity, reorder_threshold, updated_at]
+      properties:
+        merchant:
+          oneOf:
+            - $ref: "#/components/schemas/MerchantRef"
+            - type: "null"
+        product:
+          $ref: "#/components/schemas/Product"
+        quantity:
+          type: integer
+          description: Quantité que vous détenez.
+        reorder_threshold:
+          type: integer
+          description: Seuil de réapprovisionnement.
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+    StockTransfer:
+      type: object
+      description: Un transfert de stock du marchand vers votre dépôt.
+      required: [id, object, status, merchant, product, quantity, comment, rejection_reason, created_at, validated_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        object:
+          type: string
+          const: stock_transfer
+        status:
+          $ref: "#/components/schemas/StockTransferStatus"
+        merchant:
+          $ref: "#/components/schemas/MerchantRef"
+        product:
+          $ref: "#/components/schemas/Product"
+        quantity:
+          type: integer
+        comment:
+          type: string
+          description: Commentaire du marchand.
+        rejection_reason:
+          type: string
+          description: Votre motif de refus.
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        validated_at:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: Date de votre réponse (acceptation ou refus).
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+    StockReturn:
+      type: object
+      description: Un retour de stock de votre dépôt vers le marchand.
+      required: [id, object, status, merchant, product, quantity, reason, created_at, validated_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        object:
+          type: string
+          const: stock_return
+        status:
+          $ref: "#/components/schemas/StockReturnStatus"
+        merchant:
+          $ref: "#/components/schemas/MerchantRef"
+        product:
+          $ref: "#/components/schemas/Product"
+        quantity:
+          type: integer
+        reason:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        validated_at:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: Date de la réponse du marchand.
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+
+    # ── Webhooks ────────────────────────────────────────────────────────
+
+    WebhookEndpoint:
+      type: object
+      required: [id, object, url, description, environment, events, enabled, disabled_reason, consecutive_failures, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        object:
+          type: string
+          const: webhook_endpoint
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+        environment:
+          $ref: "#/components/schemas/Environment"
+        events:
+          type: array
+          description: Événements reçus ; vide = tous, y compris ceux ajoutés plus tard.
+          items:
+            $ref: "#/components/schemas/EventType"
+        enabled:
+          type: boolean
+        disabled_reason:
+          type: string
+          description: |
+            Pourquoi le point est désactivé (chaîne vide s'il est actif). Woura
+            désactive un point qui échoue 20 fois de suite depuis plus de
+            24 heures, et les points créés avec une clé révoquée (« Clé API
+            qui l'a créé révoquée. »).
+        consecutive_failures:
+          type: integer
+          description: Échecs d'envoi consécutifs (remis à zéro au premier succès).
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+    WebhookEndpointWithSecret:
+      description: Le point, avec son secret de signature (à la création et à `rotate-secret` seulement).
+      allOf:
+        - $ref: "#/components/schemas/WebhookEndpoint"
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              type: string
+              description: "Secret de signature : `whsec_` puis une chaîne aléatoire."
+              example: whsec_Jx8mQ2vL5nR9tW3yB7cE1fH4kP6sU0zA2dG5jM8oQ1r
+    WebhookDelivery:
+      type: object
+      description: |
+        Un envoi d'un événement à un point. Réussi si le point répond 2xx en
+        moins de 10 secondes ; sinon nouveaux essais, comptés depuis la
+        création de l'envoi : 1 min, 6 min, 36 min, 2 h 36, 7 h 36, 17 h 36,
+        24 h (huit tentatives en tout), puis abandon (`failed`). Un renvoi est
+        un nouvel envoi.
+
+        Une tentative dure au plus 15 secondes : 5 s pour résoudre le nom,
+        10 s pour tout l'envoi (seconde adresse comprise).
+
+        Un point qui a échoué 3 fois de suite ne reçoit plus d'envoi immédiat
+        des nouveaux événements : ils partent au rattrapage de chaque minute,
+        2 au plus par minute pour ce point, jusqu'à son prochain succès.
+      required: [id, object, event_id, event_type, endpoint_id, status, attempts, next_attempt_at, last_attempt_at, response_status, error, trigger, created_at, succeeded_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identifiant de l'envoi (en-tête `Woura-Delivery-Id`).
+        object:
+          type: string
+          const: webhook_delivery
+        event_id:
+          type: string
+          pattern: "^evt_[0-9a-f]{32}$"
+        event_type:
+          $ref: "#/components/schemas/WebhookEventTypeOrPing"
+        endpoint_id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/WebhookDeliveryStatus"
+        attempts:
+          type: integer
+        next_attempt_at:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: Prochaine tentative, pour un envoi `pending` ou `retrying` ; `null` sinon.
+        last_attempt_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        response_status:
+          type: [integer, "null"]
+          description: Code HTTP de la dernière réponse du point, `null` sans réponse.
+        error:
+          type: string
+          description: Cause du dernier échec (« Réponse HTTP 500 », redirection non suivie, délai dépassé…), chaîne vide sinon.
+        trigger:
+          type: string
+          enum: [automatic, api_retry, woura_retry]
+          description: "`automatic` : envoi d'origine ; `api_retry` : renvoi par l'API ; `woura_retry` : renvoi par l'équipe Woura."
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        succeeded_at:
+          $ref: "#/components/schemas/NullableDateTime"
+    WebhookDeliveryDetail:
+      allOf:
+        - $ref: "#/components/schemas/WebhookDelivery"
+        - type: object
+          required: [request_body, response_body]
+          properties:
+            request_body:
+              $ref: "#/components/schemas/WebhookEvent"
+              description: L'événement envoyé.
+            response_body:
+              type: string
+              description: Début de la réponse du point (1 000 caractères au plus).
+
+    # ── Événements (webhooks) ───────────────────────────────────────────
+
+    WebhookEvent:
+      type: object
+      description: |
+        L'enveloppe de tout événement. Un même événement peut arriver plus
+        d'une fois : dédoublonnez sur `id`.
+      required: [id, object, type, api_version, environment, occurred_at, data]
+      properties:
+        id:
+          type: string
+          pattern: "^evt_[0-9a-f]{32}$"
+        object:
+          type: string
+          const: event
+        type:
+          $ref: "#/components/schemas/WebhookEventTypeOrPing"
+        api_version:
+          type: string
+          const: "2026-10-22"
+        environment:
+          $ref: "#/components/schemas/Environment"
+        occurred_at:
+          $ref: "#/components/schemas/DateTime"
+          description: |
+            Pour `shipment.assigned`, `shipment.status_changed` et
+            `shipment.cancelled`, l'heure du changement au journal de la
+            livraison ; pour les autres, l'heure où l'événement a été émis.
+        data:
+          type: object
+          description: Le contenu propre au type.
+    ShipmentAssignedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: shipment.assigned
+            data:
+              type: object
+              required: [shipment]
+              properties:
+                shipment:
+                  $ref: "#/components/schemas/Shipment"
+    ShipmentStatusChangedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: shipment.status_changed
+            data:
+              type: object
+              required: [shipment, previous_status]
+              properties:
+                shipment:
+                  $ref: "#/components/schemas/Shipment"
+                previous_status:
+                  type: string
+                  description: Statut d'avant, chaîne vide s'il n'y en a pas.
+                  enum: ["", assigned, accepted, refused, picked_up, in_transit, delivered, failed, rescheduled, returned, cancelled]
+    ShipmentCancelledEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: shipment.cancelled
+            data:
+              type: object
+              required: [shipment]
+              properties:
+                shipment:
+                  $ref: "#/components/schemas/Shipment"
+    ShipmentUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: shipment.updated
+            data:
+              type: object
+              required: [shipment, changed_fields]
+              properties:
+                shipment:
+                  $ref: "#/components/schemas/Shipment"
+                changed_fields:
+                  type: array
+                  description: Champs de la livraison qui ont changé, par ordre alphabétique.
+                  items:
+                    type: string
+                    enum: [cod_amount, currency, customer, delivery_fee, delivery_fee_included, items, merchant, note, order_id, order_number, payment]
+    PartnershipEventData:
+      type: object
+      required: [merchant, changed_fields]
+      properties:
+        merchant:
+          $ref: "#/components/schemas/Merchant"
+        changed_fields:
+          type: array
+          items:
+            type: string
+            enum: [status, stock_mode, auto_accept, pickup_address]
+        previous_status:
+          $ref: "#/components/schemas/PartnershipStatus"
+          description: Présent seulement quand le statut a changé d'un statut connu à un autre.
+    PartnershipRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: partnership.requested
+            data:
+              $ref: "#/components/schemas/PartnershipEventData"
+    PartnershipUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: partnership.updated
+            data:
+              $ref: "#/components/schemas/PartnershipEventData"
+    MerchantInvitationAcceptedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: merchant_invitation.accepted
+            data:
+              type: object
+              required: [invitation, merchant]
+              properties:
+                invitation:
+                  type: object
+                  required: [id, via, accepted_at]
+                  properties:
+                    id:
+                      type: [string, "null"]
+                      format: uuid
+                      description: L'`id` rendu par `POST /merchant-invitations` ; `null` par le lien.
+                    via:
+                      type: string
+                      enum: [link, contact]
+                    accepted_at:
+                      $ref: "#/components/schemas/DateTime"
+                merchant:
+                  $ref: "#/components/schemas/Merchant"
+    StockTransferRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: stock_transfer.requested
+            data:
+              type: object
+              required: [stock_transfer]
+              properties:
+                stock_transfer:
+                  $ref: "#/components/schemas/StockTransfer"
+    StockTransferUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: stock_transfer.updated
+            data:
+              type: object
+              required: [stock_transfer, previous_status]
+              properties:
+                stock_transfer:
+                  $ref: "#/components/schemas/StockTransfer"
+                previous_status:
+                  $ref: "#/components/schemas/StockTransferStatus"
+    StockReturnCreatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: stock_return.created
+            data:
+              type: object
+              required: [stock_return]
+              properties:
+                stock_return:
+                  $ref: "#/components/schemas/StockReturn"
+    StockReturnUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: stock_return.updated
+            data:
+              type: object
+              required: [stock_return, previous_status]
+              properties:
+                stock_return:
+                  $ref: "#/components/schemas/StockReturn"
+                previous_status:
+                  $ref: "#/components/schemas/StockReturnStatus"
+    PingEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: ping
+            data:
+              type: object
+              required: [ping]
+              properties:
+                ping:
+                  type: object
+                  required: [endpoint_id, message]
+                  properties:
+                    endpoint_id:
+                      type: string
+                      format: uuid
+                    message:
+                      type: string
+                      const: Bonjour de Woura.
+
+    # ── Corps de requête ────────────────────────────────────────────────
+
+    EmptyRequest:
+      type: object
+      description: Aucun champ accepté (un champ envoyé est refusé en `400`). Le corps peut être absent.
+      additionalProperties: false
+      maxProperties: 0
+    PartnershipAcceptRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          maxLength: 1000
+          default: ""
+          description: Votre réponse au marchand.
+    PartnershipRefuseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          default: ""
+          description: Motif du refus, transmis au marchand.
+    MerchantInvitationRequest:
+      type: object
+      additionalProperties: false
+      description: "`email` ou `phone`, l'un des deux exactement (`400` sinon)."
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+          pattern: "^\\+[1-9][0-9 ().-]{6,20}$"
+          description: Format international, au moins 8 chiffres (`+22997000000`, espaces, points, tirets et parenthèses permis).
+      oneOf:
+        - required: [email]
+        - required: [phone]
+    ShipmentUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [external_reference]
+      properties:
+        external_reference:
+          type: string
+          maxLength: 100
+          description: Votre référence ; chaîne vide pour l'effacer.
+    ShipmentAcceptRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        rider_name:
+          type: string
+          maxLength: 150
+          description: Nom du livreur affecté.
+        rider_phone:
+          type: string
+          maxLength: 30
+          description: Téléphone du livreur affecté.
+    ShipmentRefuseRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Motif du refus, transmis au marchand.
+    ShipmentEventRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/DeclarableShipmentStatus"
+        reason:
+          type: string
+          maxLength: 1000
+          default: ""
+          description: Motif ; obligatoire pour `refused`, `failed`, `rescheduled` et `cancelled`.
+        occurred_at:
+          type: [string, "null"]
+          format: date-time
+          description: Quand c'est arrivé chez vous ; l'heure de réception à défaut.
+        rider_name:
+          type: string
+          maxLength: 150
+          description: Nom du livreur (chaîne vide pour l'effacer).
+        rider_phone:
+          type: string
+          maxLength: 30
+          description: Téléphone du livreur (chaîne vide pour l'effacer).
+        photo_url:
+          type: string
+          format: uri
+          maxLength: 1000
+          description: URL `http` ou `https` d'une photo (preuve de livraison, par exemple).
+        delivery_fee:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 10000000
+          description: Vos frais réels, avec `delivered` seulement ; ils remplacent les frais de la commande.
+        rescheduled_for:
+          type: [string, "null"]
+          format: date-time
+          description: Nouvelle date de passage ; obligatoire avec `rescheduled`, pas dans le passé.
+        note:
+          type: string
+          maxLength: 1000
+          description: Note libre ; quand le statut fait changer la commande, elle est ajoutée à la note de la commande (préfixe « [Livreur] »).
+        external_reference:
+          type: string
+          maxLength: 100
+          description: Votre référence (chaîne vide pour l'effacer).
+    StockTransferRefuseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          default: ""
+          description: Motif du refus (`rejection_reason`).
+    StockReturnCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [merchant_id, product_id, quantity]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+          description: La boutique à qui rendre le stock.
+        product_id:
+          type: [string, integer]
+          pattern: "^[0-9]+$"
+          maxLength: 40
+          description: Le produit (identifiant de `/stock`, chiffres).
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        reason:
+          type: string
+          maxLength: 1000
+          default: ""
+    WebhookEndpointCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          maxLength: 500
+          description: URL `https` publique, sans identifiants.
+        description:
+          type: string
+          maxLength: 200
+          default: ""
+        events:
+          type: array
+          maxItems: 11
+          description: Événements à recevoir ; vide ou absent = tous. `ping` ne s'y met pas.
+          items:
+            $ref: "#/components/schemas/EventType"
+        enabled:
+          type: boolean
+          default: true
+    WebhookEndpointUpdateRequest:
+      type: object
+      additionalProperties: false
+      description: Seuls les champs envoyés changent.
+      properties:
+        url:
+          type: string
+          maxLength: 500
+          description: URL `https` publique, sans identifiants.
+        description:
+          type: string
+          maxLength: 200
+        events:
+          type: array
+          maxItems: 11
+          description: Événements à recevoir ; vide = tous.
+          items:
+            $ref: "#/components/schemas/EventType"
+        enabled:
+          type: boolean
+          description: "`true` réactive le point et remet son compteur d'échecs à zéro."
+    TestShipmentCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          $ref: "#/components/schemas/StockMode"
+          default: depot
+        accept_automatically:
+          type: boolean
+          default: true
+          description: "`true` : la livraison arrive `accepted` ; `false` : `assigned`."
+        items:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/TestShipmentItem"
+        cod_amount:
+          type: integer
+          minimum: 0
+          maximum: 100000000
+          description: |
+            Sans `items` seulement : prix de l'article de test unique
+            (15 000 par défaut). Ignoré si `items` est donné.
+        delivery_fee:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          default: 1500
+        delivery_fee_included:
+          type: boolean
+          default: true
+        customer:
+          $ref: "#/components/schemas/TestCustomer"
+        note:
+          type: string
+          maxLength: 500
+          default: ""
+        city:
+          type: string
+          maxLength: 100
+          description: Ville du client (prend le pas sur `customer.city`).
+    TestShipmentItem:
+      type: object
+      description: Un article de la commande de test.
+      additionalProperties: false
+      required: [name, quantity, unit_price]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        sku:
+          type: string
+          maxLength: 100
+          default: ""
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        unit_price:
+          type: [number, string]
+          minimum: 0
+          description: Prix unitaire, deux décimales au plus, 12 chiffres au plus.
+    TestCustomer:
+      type: object
+      description: Le client de la commande de test (valeurs par défaut aussi sans l'objet `customer`).
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          default: Client test
+        address:
+          type: string
+          maxLength: 300
+          default: ""
+          description: Adresse de livraison (`customer.address` de la livraison).
+        city:
+          type: string
+          maxLength: 100
+          default: Cotonou
+        country:
+          type: string
+          maxLength: 2
+          default: BJ
+    TestShipmentCancelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          default: ""
+    TestShipmentUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        address:
+          type: string
+          maxLength: 300
+          description: Nouvelle adresse de livraison (`customer.address` de la livraison).
+        city:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+          maxLength: 500
+        items_amount:
+          type: integer
+          minimum: 0
+          maximum: 100000000
+          description: Nouveau montant des articles (prix négocié) ; change `cod_amount`.
+    TestStockTransferCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        product_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          default: Produit test
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 10
+        comment:
+          type: string
+          maxLength: 500
+          default: ""
+    TestPartnershipRequestCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        merchant_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          default: Marchand de test
+        message:
+          type: string
+          maxLength: 500
+          default: ""

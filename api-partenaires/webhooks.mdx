@@ -1,0 +1,189 @@
+---
+title: "Webhooks"
+description: "Points de webhook, événements, signature, nouvelles tentatives et journal des envois."
+---
+
+## Webhooks
+
+## Vos points de webhook
+
+Vous les gérez par l'API. Chaque point appartient à l'environnement de la clé
+qui l'a créé : une clé de test crée des points `test`, qui ne reçoivent que
+les événements du bac à sable.
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| POST | `/webhook-endpoints` | Créer : `{"url", "description"?, "events"?, "enabled"?}`. Réponse `201` avec le **`secret`**, montré ici seulement |
+| GET | `/webhook-endpoints` | Vos points (sans secret) |
+| GET | `/webhook-endpoints/{id}` | Un point |
+| PATCH | `/webhook-endpoints/{id}` | Modifier `url`, `description`, `events`, `enabled` (`true` remet le compteur d'échecs à zéro) |
+| DELETE | `/webhook-endpoints/{id}` | Supprimer (`204`) ; ses envois en attente sont abandonnés |
+| POST | `/webhook-endpoints/{id}/rotate-secret` | Nouveau secret, rendu dans la réponse. **L'ancien cesse aussitôt de signer** |
+| POST | `/webhook-endpoints/{id}/ping` | Envoie un événement `ping` tout de suite et rend le résultat de l'envoi |
+
+- `events` : la liste des types que le point reçoit ; vide ou absente =
+  **tous**, y compris ceux ajoutés plus tard.
+- 10 points au plus par environnement.
+- **URL `https` seulement**, sans identifiants. Le nom doit se résoudre vers
+  des adresses **publiques** : une adresse privée, de bouclage, de lien local
+  ou réservée est refusée (`400 invalid_url`), à l'enregistrement et à chaque
+  envoi. **Aucune redirection n'est suivie** : une réponse 3xx est un échec.
+- Certificat TLS valide exigé.
+
+## Les événements
+
+Corps de chaque envoi (`POST`, JSON) :
+
+```json
+{
+  "id": "evt_6c0f4e1b2a8d4f0c9b7e5a3d2c1b0a99",
+  "object": "event",
+  "type": "shipment.assigned",
+  "api_version": "2026-10-22",
+  "environment": "live",
+  "occurred_at": "2026-10-22T09:12:03+01:00",
+  "data": {"shipment": {"id": "6f1c…", "status": "accepted", "…": "…"}}
+}
+```
+
+| `type` | Quand | `data` |
+|---|---|---|
+| `shipment.assigned` | Une commande vous est confiée (assignation, réassignation vers vous, commande reprise) | `shipment` (complète) |
+| `shipment.updated` | Le marchand a changé ce que vous livrez : client (nom, téléphone, adresse, ville), articles, `cod_amount`, frais, paiement en ligne ou acompte reçu, note | `shipment`, `changed_fields` (parmi `customer`, `items`, `cod_amount`, `delivery_fee`, `delivery_fee_included`, `payment`, `note`, `merchant`, `order_number`, `currency`) |
+| `shipment.cancelled` | Commande annulée par le marchand ou le call center, réassignée ailleurs, livreur retiré, commande remise en attente | `shipment` (`status: cancelled` ; `active: false` si la commande a été réassignée, retirée ou remise en attente, `true` si elle a été annulée) |
+| `shipment.status_changed` | Un autre statut posé **du côté de Woura** (le marchand livre ou marque retournée, l'équipe Woura corrige) | `shipment`, `previous_status` |
+| `partnership.requested` | Un marchand vous demande de travailler avec vous (ou relance après un refus) | `merchant` (avec `partnership`), `changed_fields` |
+| `partnership.updated` | Partenariat accepté, refusé, suspendu, résilié, ou réglages changés (mode de stock, acceptation automatique, adresse de ramassage) — **quel qu'en soit l'auteur, vous compris** | `merchant`, `changed_fields` (`status`, `stock_mode`, `auto_accept`, `pickup_address`), `previous_status` si le statut a changé |
+| `merchant_invitation.accepted` | Un marchand a accepté votre invitation (lien ou contact) | `invitation` (`id`, `via`: `link` ou `contact`, `accepted_at`), `merchant` |
+| `stock_transfer.requested` | Un marchand vous envoie du stock | `stock_transfer` |
+| `stock_transfer.updated` | Transfert accepté, refusé ou annulé par le marchand | `stock_transfer`, `previous_status` |
+| `stock_return.created` | Un retour vers un marchand a été créé (par l'API ou l'app Woura Agent) | `stock_return` |
+| `stock_return.updated` | Le marchand a accepté ou refusé votre retour | `stock_return`, `previous_status` |
+| `ping` | `POST /webhook-endpoints/{id}/ping` | `ping` |
+
+**Ce que vous faites vous-même ne vous revient pas pour les livraisons** : un
+statut déclaré par l'API ou depuis l'app Woura Agent n'émet pas de
+`shipment.status_changed`, et vos frais réels déclarés **par l'API** avec
+`delivered` n'émettent pas de `shipment.updated` (depuis l'app Woura Agent,
+si). Les événements de partenariat, de transfert et de retour, eux, partent
+quel qu'en soit l'auteur.
+
+**Qui reçoit.** Rien ne part vers une société désactivée ou suspendue par
+Woura, ni en live vers une société qui n'est plus vérifiée. **Révoquer une
+clé désactive les points de webhook créés avec elle** (une clé qui a fuité a
+pu enregistrer l'URL d'un tiers) : réactivez les vôtres avec votre nouvelle
+clé (`PATCH {"enabled": true}`).
+
+## Signature
+
+Chaque envoi porte :
+
+| En-tête | |
+|---|---|
+| `Woura-Signature` | `t=<horodatage Unix>,v1=<signature>` |
+| `Woura-Event` | Le type (`shipment.assigned`…) |
+| `Woura-Event-Id` | L'`id` de l'événement (`evt_…`) |
+| `Woura-Delivery-Id` | L'identifiant de cet envoi (change à chaque renvoi) |
+
+`v1` est le HMAC-SHA256, en hexadécimal, de la chaîne `"<t>.<corps brut>"`
+avec le secret du point. **Vérifiez sur le corps brut** (les octets reçus,
+avant tout décodage JSON), comparez en temps constant, et refusez un `t` de
+plus de 5 minutes (rejeu). La signature est recalculée à chaque tentative.
+
+**Python**
+
+```python
+import hashlib, hmac, time
+
+def signature_valide(entete: str, corps: bytes, secret: str, tolerance=300) -> bool:
+    try:
+        parties = dict(p.split("=", 1) for p in entete.split(","))
+        t, recue = parties["t"], parties["v1"]
+    except (ValueError, KeyError):
+        return False
+    if abs(time.time() - int(t)) > tolerance:
+        return False
+    attendue = hmac.new(secret.encode(), f"{t}.".encode() + corps, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(attendue, recue)
+```
+
+**Node.js**
+
+```js
+const crypto = require("crypto");
+
+// corpsBrut : Buffer du corps tel que reçu (express.raw({ type: "application/json" }))
+function signatureValide(entete, corpsBrut, secret, tolerance = 300) {
+  const parties = Object.fromEntries((entete || "").split(",").map((p) => {
+    const i = p.indexOf("=");
+    return [p.slice(0, i), p.slice(i + 1)];
+  }));
+  if (!parties.t || !parties.v1) return false;
+  if (Math.abs(Date.now() / 1000 - Number(parties.t)) > tolerance) return false;
+  const attendue = crypto.createHmac("sha256", secret)
+    .update(Buffer.concat([Buffer.from(`${parties.t}.`), corpsBrut]))
+    .digest("hex");
+  const a = Buffer.from(attendue), b = Buffer.from(parties.v1);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+```
+
+**PHP**
+
+```php
+<?php
+function signature_valide(string $entete, string $corpsBrut, string $secret, int $tolerance = 300): bool {
+    $parties = [];
+    foreach (explode(',', $entete) as $p) {
+        [$cle, $valeur] = array_pad(explode('=', $p, 2), 2, '');
+        $parties[$cle] = $valeur;
+    }
+    if (empty($parties['t']) || empty($parties['v1'])) return false;
+    if (abs(time() - (int) $parties['t']) > $tolerance) return false;
+    $attendue = hash_hmac('sha256', $parties['t'] . '.' . $corpsBrut, $secret);
+    return hash_equals($attendue, $parties['v1']);
+}
+
+// $corpsBrut = file_get_contents('php://input');
+// $entete = $_SERVER['HTTP_WOURA_SIGNATURE'] ?? '';
+```
+
+## Envoi, nouvelles tentatives, dédoublonnage
+
+- Woura envoie **après** l'enregistrement du changement : un changement annulé
+  n'envoie rien.
+- Un envoi est **réussi** si vous répondez `2xx` en moins de **10 secondes**.
+  Répondez vite (`200`), traitez ensuite.
+- Un point qui vient d'échouer trois fois de suite ne reçoit plus d'envoi
+  immédiat : les événements suivants partent au rythme des nouvelles
+  tentatives (deux par minute au plus) jusqu'à son premier succès.
+- Sinon (erreur, délai, redirection, `4xx` ou `5xx`), Woura retente : 1 min,
+  6 min, 36 min, 2 h 36, 7 h 36, 17 h 36 et 24 h après le premier envoi, puis
+  abandonne.
+- Un point qui échoue **20 fois de suite depuis plus de 24 h** est désactivé
+  (`enabled: false`, `disabled_reason`) ; l'équipe Woura est prévenue.
+  Réactivez-le par `PATCH {"enabled": true}` une fois réparé.
+- **Livraison au moins une fois** : un même événement peut vous arriver deux
+  fois (réponse perdue, renvoi, nouvelle tentative après un délai dépassé).
+  **Dédoublonnez sur `id`** (`evt_…`) : gardez les `id` traités quelques jours
+  et ignorez un `id` déjà vu.
+- L'ordre d'arrivée n'est pas garanti après une nouvelle tentative : fiez-vous
+  à `occurred_at`, et en cas de doute relisez `GET /shipments/{id}`.
+
+## Journal des envois
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/webhook-deliveries?status=&endpoint=&event_type=&event_id=` | Vos envois, du plus récent au plus ancien. `status` : `pending`, `retrying`, `succeeded`, `failed` |
+| GET | `/webhook-deliveries/{id}` | Un envoi, avec `request_body` (l'événement) et `response_body` (le début de votre réponse) |
+| POST | `/webhook-deliveries/{id}/retry` | Renvoyer l'événement (`202`) : nouvel envoi, même `id` d'événement |
+
+```json
+{"id": "…", "object": "webhook_delivery", "event_id": "evt_…", "event_type": "shipment.assigned",
+ "endpoint_id": "…", "status": "retrying", "attempts": 2,
+ "next_attempt_at": "2026-10-22T10:18:00+01:00", "last_attempt_at": "2026-10-22T10:12:00+01:00",
+ "response_status": 503, "error": "Réponse HTTP 503", "trigger": "automatic",
+ "created_at": "…", "succeeded_at": null}
+```
+
+Le journal est gardé 30 jours.

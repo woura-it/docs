@@ -239,6 +239,26 @@
                 ]
               }
             ]
+          },
+          {
+            "tab": "API partenaires",
+            "icon": "plug",
+            "groups": [
+              {
+                "group": "Guide d'intégration",
+                "pages": [
+                  "api-partenaires/introduction",
+                  "api-partenaires/livraisons",
+                  "api-partenaires/marchands-et-stock",
+                  "api-partenaires/webhooks",
+                  "api-partenaires/mode-test"
+                ]
+              },
+              {
+                "group": "Référence",
+                "openapi": "api-partenaires/openapi.yaml"
+              }
+            ]
           }
         ]
       }
