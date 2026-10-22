@@ -58,7 +58,7 @@ info:
     (« Route inconnue. »), sans vérifier la clé.
 
 servers:
-  - url: https://app.woura.africa/api/partner/v1
+  - url: https://api.woura.africa/api/partner/v1
     description: Production (clés live et clés de test)
 
 security:
@@ -591,7 +591,7 @@ paths:
                 $ref: "#/components/schemas/PaginatedShipments"
               example:
                 count: 41
-                next: https://app.woura.africa/api/partner/v1/shipments?page=2&page_size=1
+                next: https://api.woura.africa/api/partner/v1/shipments?page=2&page_size=1
                 previous: null
                 results:
                   - id: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
