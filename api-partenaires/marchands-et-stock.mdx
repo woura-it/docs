@@ -1,0 +1,143 @@
+---
+title: "Marchands et stock"
+description: "Partenariats, invitations sans liste des marchands, stock en dépôt, transferts et retours."
+---
+
+## Marchands : partenariats et invitations
+
+Un **marchand** est une boutique Woura (`merchant.id`). Vous ne recevez ses
+commandes qu'avec un partenariat **accepté**.
+
+```json
+{
+  "id": "b4b6c1d2-…",
+  "name": "Boutique Awa",
+  "phone": "+22997000000",
+  "country": "BJ",
+  "pickup_address": "Marché Dantokpa, allée 4, Cotonou",
+  "partnership": {
+    "id": "0d3e…",
+    "status": "accepted",
+    "stock_mode": "pickup",
+    "auto_accept": true,
+    "message": "Bonjour, nous livrons à Cotonou…",
+    "response_message": "",
+    "requested_at": "2026-10-20T11:00:00+01:00",
+    "responded_at": "2026-10-20T15:00:00+01:00",
+    "updated_at": "2026-10-20T15:00:00+01:00"
+  }
+}
+```
+
+`status` : `pending` (demande du marchand), `accepted`, `refused`,
+`suspended`, `terminated`. Pour un partenariat `refused` ou `terminated`, seuls
+`id` et `partnership` sont rendus (pas de nom, ni de téléphone, ni d'adresse).
+Le mode de stock, l'acceptation automatique et l'adresse de ramassage sont
+réglés par le marchand.
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/merchants?status=` | Vos partenariats (`status` : un ou plusieurs, séparés par des virgules) |
+| GET | `/merchants/{id}` | Un partenariat. `404` sans partenariat — la même réponse qu'une boutique inexistante |
+| POST | `/merchants/{id}/accept` | Accepter une demande (`{"message": "…"}` facultatif). `409 merchant_plan_limit` si le plan du marchand est plein |
+| POST | `/merchants/{id}/refuse` | La refuser (`{"reason": "…"}` facultatif) |
+
+## Relier vos e-commerçants déjà sur Woura
+
+Vous ne pouvez ni lister ni chercher les marchands de Woura. Deux chemins, qui
+finissent tous deux par **un clic du marchand** dans son app :
+
+## Votre lien d'invitation
+
+`GET /me` → `invitation_link`, de la forme
+`https://woura.africa/delivery-men/invite/<jeton>`. Envoyez-le vous-même à
+vos e-commerçants (WhatsApp, e-mail). Ouvert dans l'app Woura, connecté, il
+montre votre société ; le marchand choisit sa boutique et accepte : le
+partenariat est **accepté d'office**, la limite de livreurs de son plan
+comprise. Vous recevez `partnership.updated` puis
+`merchant_invitation.accepted` (`via: "link"`) — rien si sa boutique
+travaillait déjà avec vous.
+
+Le lien ne marche que pour une société vérifiée. Woura peut le renouveler à
+votre demande : l'ancien ne mène alors plus à rien.
+
+## `POST /merchant-invitations`
+
+Vous connaissez l'e-mail ou le téléphone d'un e-commerçant :
+
+```json
+{"email": "awa@example.com"}
+```
+ou
+```json
+{"phone": "+22997000000"}
+```
+
+Un seul des deux ; téléphone au **format international** (`+` et indicatif).
+
+Réponse **toujours la même**, que le contact corresponde à un marchand Woura
+ou non :
+
+```json
+{
+  "id": "1b9e…",
+  "object": "merchant_invitation",
+  "status": "accepted_for_processing",
+  "message": "Si un compte marchand Woura correspond à ce contact, il a reçu l'invitation. Vous serez prévenu s'il l'accepte."
+}
+```
+
+Si un marchand correspond, Woura le prévient (notification, e-mail) ; il
+accepte ou refuse dans son app. **Vous n'apprenez rien avant
+l'acceptation** : ni si un compte existe, ni s'il a été prévenu, ni un refus.
+À l'acceptation, vous recevez `partnership.updated` puis
+`merchant_invitation.accepted` (`invitation.id` = l'`id` ci-dessus,
+`via: "contact"`) — rien si la boutique choisie travaillait déjà avec vous. Une invitation expire après 30 jours. Un même contact n'est
+invité qu'une fois par 24 h (les envois suivants rendent la même réponse,
+sans rien envoyer). Limite : 30 invitations par heure et par clé.
+
+## Stock en dépôt
+
+En mode `depot`, vous détenez le stock du marchand. Il entre par des
+**transferts** que le marchand vous envoie et que vous acceptez, sort à la
+livraison, et revient au marchand par des **retours**.
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/stock?merchant=&product=` | Vos niveaux de stock, par marchand et par produit |
+| GET | `/stock-transfers?status=&merchant=` | Transferts reçus (`pending`, `accepted`, `refused`, `cancelled`) |
+| GET | `/stock-transfers/{id}` | Un transfert |
+| POST | `/stock-transfers/{id}/accept` | Accepter : la quantité entre dans votre stock |
+| POST | `/stock-transfers/{id}/refuse` | Refuser (`{"reason": "…"}` facultatif) |
+| GET | `/stock-returns?status=&merchant=` | Vos retours (`pending`, `accepted`, `refused`) |
+| POST | `/stock-returns` | Rendre du stock au marchand |
+| GET | `/stock-returns/{id}` | Un retour |
+
+```json
+// GET /stock → results[]
+{"merchant": {"id": "b4b6…", "name": "Boutique Awa"},
+ "product": {"id": "8812734", "name": "Robe wax", "sku": ""},
+ "quantity": 12, "reorder_threshold": 5, "updated_at": "2026-10-22T10:00:00+01:00"}
+
+// GET /stock-transfers/{id}
+{"id": "…", "object": "stock_transfer", "status": "pending",
+ "merchant": {"id": "b4b6…", "name": "Boutique Awa"},
+ "product": {"id": "8812734", "name": "Robe wax", "sku": ""},
+ "quantity": 20, "comment": "", "rejection_reason": "",
+ "created_at": "…", "validated_at": null, "updated_at": "…"}
+```
+
+Un transfert s'accepte ou se refuse **en entier** (pas de réception
+partielle : refusez-le et demandez au marchand le bon envoi).
+
+**Retour** :
+
+```json
+{"merchant_id": "b4b6…", "product_id": "8812734", "quantity": 3, "reason": "Fin de collection"}
+```
+
+Réponse `201` : le retour, `pending`. Le marchand l'accepte (le stock sort de
+chez vous) ou le refuse ; vous recevez `stock_return.updated`. `404` si la
+boutique n'a aucun partenariat avec vous (quel qu'en soit le statut) ou si le
+produit n'est pas le sien ;
+`409 conflict` si vous ne détenez pas la quantité.

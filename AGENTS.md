@@ -67,6 +67,16 @@ Décision du 21/10/2026 : **Approvisionnement**, **Publicités Facebook**, **Vei
 
 Ce que l'interface n'offre pas (déconnecter une boutique ou un numéro WhatsApp, zones de livraison WhatsApp) : écrire « contactez le support ».
 
+## Onglet « API partenaires »
+
+Lecteur différent : le développeur d'une société de livraison, pas un
+marchand. Les règles « Le lecteur » et « Frontières de contenu » ci-dessus ne
+s'y appliquent pas (routes, en-têtes et codes d'erreur y sont le sujet).
+Source de vérité : `api/docs/partner/API-PARTENAIRES.md` (les pages du guide en
+sont tirées) et `api/docs/partner/openapi.yaml`, recopié tel quel dans
+`api-partenaires/openapi.yaml` pour la référence. Modifier d'abord la source dans
+`api/`, puis recopier.
+
 ## Sources de vérité
 
 1. Les menus : `app/hooks/use-menu-marchand.ts` (`menuV2`, `raccourcis`, `rubriquesDuCatalogue` : menu, raccourcis et cartes de Toutes les fonctionnalités, lus par toutes les surfaces), `app/components/admin/feuille-plus.tsx` et `mobile-bottom-nav.tsx` (téléphone), règles des raccourcis dans `api/app/shop/signaux_navigation.py` ; `app/components/admin/admin-sidebar.tsx` n'est plus que le rendu. Éditeur : `dashboard-storefront/components/builder/BuilderSidebar.tsx`. Vitrine : `storefront/components/shop/`.
