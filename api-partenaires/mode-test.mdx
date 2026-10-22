@@ -21,6 +21,9 @@ Simuler ce que ferait un marchand :
 | POST | `/test/shipments/{id}/update` | Le marchand retouche (`address`, `city`, `note`, `items_amount`) → `shipment.updated` |
 | POST | `/test/stock-transfers` | Le marchand vous envoie du stock (`product_name`, `quantity`, `comment`) → `stock_transfer.requested` |
 | POST | `/test/partnership-requests` | Un nouveau marchand fictif vous demande (`merchant_name`, `message`) → `partnership.requested` |
+| POST | `/test/statements/weekly-run` | L'émission du lundi sur votre bac à sable, jusqu'à `period_end` (aujourd'hui par défaut) → `statement.issued` pour chaque relevé émis |
+| POST | `/test/statements/{id}/confirm` | Le marchand confirme le versement d'un relevé `paid` → `statement.confirmed` |
+| POST | `/test/statements/{id}/dispute` | Le marchand conteste un relevé `issued` ou `paid` (`{"comment"}` facultatif) → `statement.disputed` |
 
 `POST /test/shipments` (tout est facultatif) :
 
@@ -41,7 +44,11 @@ Plafonds par société : 500 commandes de test et 200 transferts de test par
 
 Sans `items`, un article de test au prix `cod_amount` (15 000 par défaut). Le
 téléphone du client est fictif (+999…). En mode `depot`, le stock n'est pas
-contrôlé dans le bac à sable. Les routes `/test/…` répondent
+contrôlé dans le bac à sable. Les [relevés](/api-partenaires/releves) marchent
+comme en live sur les livraisons du bac à sable (`merchant_id` : celui de la
+« Boutique de test Woura », dans `GET /merchants`) ; l'émission du lundi ne
+tourne qu'en live, `/test/statements/weekly-run` la simule. Seul
+`statement.cancelled` émis par l'équipe Woura ne se simule pas. Les routes `/test/…` répondent
 `403 test_key_required` avec une clé live, et `POST /merchant-invitations`
 n'envoie rien avec une clé de test (même réponse).
 
@@ -50,7 +57,6 @@ n'envoie rien avec une clé de test (même réponse).
 | Quoi | Lot |
 |---|---|
 | `GET` / `PUT /zones` : votre grille de tarifs par pays et ville | L4 |
-| `GET` / `POST /statements`, `POST /statements/{id}/paid` : relevés COD, et les événements `statement.confirmed` / `statement.disputed` | L5 |
 
 Vos réponses peuvent encore faire évoluer cette API :
 

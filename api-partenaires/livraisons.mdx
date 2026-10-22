@@ -44,6 +44,7 @@ description: "La livraison (shipment), ses statuts et les routes qui la font ava
   "reason": "",
   "photo_url": "",
   "rescheduled_for": null,
+  "statement_id": null,
   "created_at": "2026-10-22T09:12:03+01:00",
   "updated_at": "2026-10-22T09:15:40+01:00",
   "closed_at": null,
@@ -73,6 +74,7 @@ description: "La livraison (shipment), ses statuts et les routes qui la font ava
 | `rider` | Le livreur que vous avez affecté |
 | `reason` | Motif du dernier statut (refus, échec, report, annulation) |
 | `rescheduled_for` | Nouvelle date de passage (statut `rescheduled`) |
+| `statement_id` | Le relevé COD qui solde cette livraison ([relevés](/api-partenaires/releves)), `null` tant qu'elle n'est sur aucun relevé (ou si le sien a été annulé) |
 | `closed_at` | Date de clôture (livraison inactive). Une fois close, la livraison est **figée** : client, articles, montants et note restent ceux que vous connaissiez à la clôture ; les retouches faites ensuite par le marchand (pour un autre livreur) ne vous parviennent pas |
 | `events` | Journal complet, du plus ancien au plus récent. `actor` : `merchant`, `delivery_company` (vous, depuis l'app Woura Agent), `api` (vous, par l'API), `call_center`, `woura_staff`, `system`. `occurred_at` : ce que vous avez déclaré ; `recorded_at` : la réception par Woura |
 
@@ -155,6 +157,7 @@ Liste paginée de vos livraisons.
 | `updated_since` | Modifiées depuis cette date (ISO 8601, **encodée dans l'URL** : `+01:00` s'écrit `%2B01:00`). Toute modification compte, y compris celles du marchand qui émettent `shipment.updated`. Pour qui ne reçoit pas de webhook, ou pour rattraper |
 | `merchant` | Identifiant d'une boutique (`merchant.id`) |
 | `active` | `true` (défaut) : les livraisons en vigueur ; `false` : les closes ; `all` : toutes |
+| `statement` | `none` : les livraisons sur aucun relevé (avec `status=delivered` : ce qui reste à relever) ; ou l'`id` d'un relevé — `active` vaut alors `all` par défaut, pour lister aussi celles closes depuis |
 | `ordering` | `-updated_at` (défaut), `updated_at`, `-created_at`, `created_at` |
 
 Pour synchroniser par interrogation : `?updated_since=<dernière date vue>&ordering=updated_at&active=all`.
