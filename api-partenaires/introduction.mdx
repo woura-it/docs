@@ -24,7 +24,8 @@ Woura vous transmet les commandes que les marchands vous confient, par webhooks,
 - **Paiement à la livraison (COD)** : `cod_amount` est ce que votre livreur
   encaisse à la porte. Il suit les retouches du marchand et les paiements en
   ligne arrivés après l'assignation (`shipment.updated`). Woura ne déplace
-  aucun argent ; vous reversez au marchand.
+  aucun argent ; vous reversez au marchand, et vos
+  [relevés](/api-partenaires/releves) en gardent la trace.
 - **Une seule société par compte.** Vous transmettez le nom et le téléphone du
   livreur que vous affectez ; il n'a pas de compte Woura.
 - **Vous ne voyez que vos marchands.** Aucune route ne liste, ne cherche ni ne
@@ -108,6 +109,8 @@ imbriqué s'écrit `items[1].quantity` ou `customer.name` :
 | 409 | `too_many_endpoints` | Plus de 10 points de webhook dans un environnement |
 | 409 | `endpoint_disabled` | Ping ou renvoi vers un point désactivé |
 | 409 | `sandbox_limit_reached` | Plafond du bac à sable atteint ([mode test](/api-partenaires/mode-test)) |
+| 409 | `no_eligible_shipments`, `currency_required`, `too_many_shipments` | Création d'un relevé impossible ([relevés](/api-partenaires/releves)) |
+| 409 | `statement_transition_not_allowed` | Geste impossible sur un relevé dans son statut actuel ([relevés](/api-partenaires/releves)) |
 | 409 | `conflict` | Autre refus métier (stock insuffisant pour un retour, par exemple) |
 | 415 | `unsupported_media_type` | Corps qui n'est pas du JSON |
 | 429 | `rate_limited` | Trop de requêtes (`Retry-After`) |
@@ -140,8 +143,11 @@ clé avec une autre méthode, un autre chemin ou un autre corps est refusée
    `shipment.assigned`, acceptez-la, faites-la avancer jusqu'à `delivered`.
    Essayez un refus, un report, l'annulation et la modification par le
    marchand, un transfert de stock.
-4. Dédoublonnez sur `id`, renvoyez toujours le même `Idempotency-Key` pour un
+4. Relevez vos livraisons de test : `POST /statements` (`issue: true`),
+   déclarez un versement, puis simulez la réponse du marchand
+   (`/test/statements/{id}/confirm` ou `/dispute`).
+5. Dédoublonnez sur `id`, renvoyez toujours le même `Idempotency-Key` pour un
    même geste, et gérez les `409`.
-5. Une fois votre société vérifiée, Woura vous remet une clé live ;
+6. Une fois votre société vérifiée, Woura vous remet une clé live ;
    enregistrez vos points `live`, puis envoyez votre lien d'invitation à vos
    e-commerçants.

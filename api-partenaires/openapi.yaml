@@ -6,8 +6,8 @@ info:
   description: |
     L'API des sociétés de livraison partenaires de Woura : recevoir les
     commandes que les marchands vous confient (livraisons), déclarer leurs
-    statuts, répondre aux demandes de partenariat, gérer le stock en dépôt et
-    recevoir des webhooks signés.
+    statuts, répondre aux demandes de partenariat, gérer le stock en dépôt,
+    tenir vos relevés COD avec les marchands et recevoir des webhooks signés.
 
     **Authentification.** `Authorization: Bearer wk_live_…` ou
     `Bearer wk_test_…`. Les clés sont créées par Woura ; une clé live ne
@@ -89,6 +89,18 @@ tags:
       Le stock que les marchands vous confient en dépôt (mode `depot`) :
       transferts du marchand vers votre dépôt, niveaux de stock, retours de
       votre dépôt vers le marchand.
+  - name: Relevés
+    description: |
+      Les relevés COD : ce que vous devez reverser à un marchand pour les
+      commandes livrées et encaissées à la porte. Un relevé par marchand et
+      par devise ; montants figés à la création. Woura ne déplace aucun
+      argent : vous déclarez votre versement, le marchand le confirme ou le
+      conteste. Cycle : `draft` → `issued` → `paid` → `confirmed`, ou
+      `disputed` (vous redéclarez un versement ou annulez) ; `cancelled` rend
+      les livraisons, qui repartent dans le relevé suivant. Chaque lundi,
+      Woura émet d'office les relevés de la semaine passée pour les sociétés
+      qui ont une clé live active (`origin: automatic`), après avoir annulé
+      leurs brouillons de plus de 7 jours.
   - name: Webhooks
     description: |
       Vos points de réception (`webhook_endpoint`), le journal des envois
@@ -105,8 +117,9 @@ tags:
     description: |
       Routes réservées aux clés de test (`wk_test_…`) : elles simulent, dans
       votre bac à sable, ce qu'un marchand ferait (confier une commande,
-      l'annuler, la modifier, envoyer du stock, demander un partenariat). Avec
-      une clé live : `403 test_key_required`.
+      l'annuler, la modifier, envoyer du stock, demander un partenariat,
+      répondre à un relevé) et l'émission des relevés du lundi. Avec une clé
+      live : `403 test_key_required`.
 
 paths:
 
@@ -572,6 +585,17 @@ paths:
             type: string
             enum: ["true", "false", "1", "0", all]
             default: "true"
+        - name: statement
+          in: query
+          required: false
+          description: |
+            `none` : les livraisons sur aucun relevé COD (avec
+            `status=delivered` : ce qui reste à relever) ; ou l'identifiant
+            d'un relevé : ses livraisons, closes comprises (`active` vaut
+            alors `all` par défaut). Toute autre valeur répond `400`.
+          schema:
+            type: string
+            example: none
         - name: ordering
           in: query
           required: false
@@ -1521,6 +1545,325 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   # ══════════════════════════════════════════════════════════════════════
+  # Relevés
+  # ══════════════════════════════════════════════════════════════════════
+
+  /statements:
+    get:
+      operationId: listStatements
+      tags: [Relevés]
+      summary: Lister vos relevés COD
+      description: |
+        Vos relevés, sans leurs lignes (`GET /statements/{id}` les donne).
+        Avec une clé de test, ceux du bac à sable seulement.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Statuts, séparés par des virgules. Un statut inconnu répond `400`.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/StatementStatus"
+        - name: merchant
+          in: query
+          required: false
+          description: "Identifiant de la boutique (UUID). Mal formé : `400`."
+          schema:
+            type: string
+            format: uuid
+        - name: currency
+          in: query
+          required: false
+          description: Devise (code ISO 4217, insensible à la casse).
+          schema:
+            type: string
+            example: XOF
+        - name: updated_since
+          in: query
+          required: false
+          description: "Relevés modifiés depuis cette date (ISO 8601, encodée dans l'URL). Mal formée : `400`."
+          schema:
+            type: string
+            format: date-time
+        - name: ordering
+          in: query
+          required: false
+          description: Ordre de la liste. Toute autre valeur répond `400`.
+          schema:
+            type: string
+            enum: [-created_at, created_at, -updated_at, updated_at]
+            default: -created_at
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de relevés.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedStatements"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: createStatement
+      tags: [Relevés]
+      summary: Créer un relevé COD
+      description: |
+        Relève vos livraisons `delivered`, encore actives, sur aucun autre
+        relevé (hors relevé annulé), de ce marchand, dans cette devise, livrées
+        entre `period_start` et `period_end` (jours du marchand, bornes
+        comprises). Une commande déjà sur un relevé non annulé n'y entre pas
+        une seconde fois. Les montants de chaque ligne sont figés maintenant :
+
+        `net_amount = cod_collected − delivery_fee − closing_fee`
+
+        Le relevé est un brouillon (`draft`) que le marchand ne voit pas, sauf
+        `issue: true`. 2 000 livraisons au plus.
+
+        - `404 not_found` : boutique inconnue ou supprimée, ou avec qui vous
+          n'avez ni partenariat ni livraison ;
+        - `409 no_eligible_shipments` : rien à relever sur la période ;
+        - `409 currency_required` : livraisons en plusieurs devises, précisez
+          `currency` (liste dans `details.currencies`) ;
+        - `409 too_many_shipments` : plus de 2 000 livraisons, raccourcissez
+          la période ;
+        - `400 validation_error` : `period_end` dans le futur, `period_start`
+          après `period_end`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementCreateRequest"
+            example:
+              merchant_id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
+              currency: XOF
+              period_start: "2026-10-12"
+              period_end: "2026-10-18"
+              issue: true
+      responses:
+        "201":
+          description: Le relevé, avec ses lignes.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StatementCreateConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /statements/{statement_id}:
+    parameters:
+      - $ref: "#/components/parameters/StatementId"
+    get:
+      operationId: getStatement
+      tags: [Relevés]
+      summary: Un relevé COD, avec ses lignes
+      responses:
+        "200":
+          description: Le relevé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /statements/{statement_id}/issue:
+    parameters:
+      - $ref: "#/components/parameters/StatementId"
+    post:
+      operationId: issueStatement
+      tags: [Relevés]
+      summary: Émettre un brouillon
+      description: |
+        Le brouillon passe `issued` : le marchand le voit dans Woura et en est
+        prévenu. Corps vide. Un relevé qui n'est pas un brouillon répond
+        `409 statement_transition_not_allowed`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Le relevé, émis.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StatementConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /statements/{statement_id}/paid:
+    parameters:
+      - $ref: "#/components/parameters/StatementId"
+    post:
+      operationId: declareStatementPayment
+      tags: [Relevés]
+      summary: Déclarer un versement
+      description: |
+        Vous avez versé au marchand : le relevé passe `paid` et le marchand
+        est invité à confirmer. Possible depuis `issued`, `paid` (un versement
+        en plusieurs fois) et `disputed` (un complément, une nouvelle preuve,
+        après une contestation). Sans `amount`, ce qui reste dû
+        (`net_amount − paid_amount`, `0` au moins) ; sans `paid_at`,
+        maintenant. `paid_at` dans le futur : `400`. Net nul ou négatif
+        (rien à reverser) : déclarez `paid` sans montant une fois le compte
+        réglé entre vous ; le marchand est prévenu que le relevé est soldé.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementPaymentRequest"
+            example:
+              method: mobile_money
+              paid_at: "2026-10-19T10:00:00+01:00"
+              amount: 23500
+              reference: MM-778899
+              proof_url: https://exemple.com/recus/778899.jpg
+              note: Versement de la semaine 42
+      responses:
+        "200":
+          description: Le relevé, versement déclaré.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StatementConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /statements/{statement_id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/StatementId"
+    post:
+      operationId: cancelStatement
+      tags: [Relevés]
+      summary: Annuler un relevé
+      description: |
+        Le relevé passe `cancelled` ; ses livraisons redeviennent libres
+        (`statement_id: null`) et repartent dans votre prochain relevé.
+        Possible depuis `draft`, `issued` et `disputed` — pas depuis `paid`
+        (le marchand doit répondre) ni `confirmed`. `reason` est obligatoire
+        sauf pour un brouillon : le marchand le lit. Les versements déclarés
+        restent sur le relevé annulé.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementCancelRequest"
+            example:
+              reason: Commande #0419 retirée, nouveau relevé à suivre
+      responses:
+        "200":
+          description: Le relevé, annulé.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StatementConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ══════════════════════════════════════════════════════════════════════
   # Webhooks
   # ══════════════════════════════════════════════════════════════════════
 
@@ -2335,6 +2678,145 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /test/statements/weekly-run:
+    post:
+      operationId: runTestWeeklyStatements
+      tags: [Mode test]
+      summary: Simuler l'émission du lundi
+      description: |
+        Lance sur votre bac à sable l'émission que Woura fait chaque lundi en
+        live : brouillons de plus de 7 jours annulés, puis un relevé émis par
+        marchand fictif et par devise pour tout ce qui reste non relevé
+        jusqu'à `period_end` (aujourd'hui par défaut, jamais dans le futur ;
+        les jours du bac à sable sont en UTC). `statement.issued` part vers vos
+        points de test pour chaque relevé émis.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestWeeklyRunRequest"
+            example:
+              period_end: "2026-10-18"
+      responses:
+        "200":
+          description: Les relevés émis (sans `lines`), liste vide s'il n'y avait rien à relever.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [object, results]
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/statements/{statement_id}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/StatementId"
+    post:
+      operationId: confirmTestStatement
+      tags: [Mode test]
+      summary: Simuler la confirmation du marchand
+      description: |
+        Le marchand fictif confirme avoir reçu votre versement : le relevé
+        (`paid`) passe `confirmed`, et `statement.confirmed` part vers vos
+        points de test. Depuis un autre statut :
+        `409 statement_transition_not_allowed`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Le relevé, confirmé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StatementConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/statements/{statement_id}/dispute:
+    parameters:
+      - $ref: "#/components/parameters/StatementId"
+    post:
+      operationId: disputeTestStatement
+      tags: [Mode test]
+      summary: Simuler la contestation du marchand
+      description: |
+        Le marchand fictif conteste un relevé `issued` ou `paid` : il passe
+        `disputed`, et `statement.disputed` part vers vos points de test.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestStatementDisputeRequest"
+            example:
+              comment: Il manque 1 000 F sur le versement.
+      responses:
+        "200":
+          description: Le relevé, contesté.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StatementConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 # ════════════════════════════════════════════════════════════════════════
 # Webhooks (événements envoyés par Woura)
 # ════════════════════════════════════════════════════════════════════════
@@ -3108,6 +3590,110 @@ webhooks:
         "2XX":
           $ref: "#/components/responses/WebhookReceived"
 
+  statement.issued:
+    post:
+      operationId: onStatementIssued
+      tags: [Webhooks]
+      summary: statement.issued
+      description: |
+        Woura a émis un relevé pour vous, le lundi, avec ce qui restait non
+        relevé à la fin du dimanche (`origin: automatic`). Sans les lignes :
+        lisez-les par `GET /statements/{id}`. Pas envoyé pour les relevés
+        que vous émettez vous-même.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementIssuedEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  statement.confirmed:
+    post:
+      operationId: onStatementConfirmed
+      tags: [Webhooks]
+      summary: statement.confirmed
+      description: |
+        Le marchand confirme avoir reçu votre versement : le relevé est clos.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementConfirmedEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  statement.disputed:
+    post:
+      operationId: onStatementDisputed
+      tags: [Webhooks]
+      summary: statement.disputed
+      description: |
+        Le marchand conteste un relevé émis ou un versement déclaré ;
+        `statement.dispute_comment` dit pourquoi. Répondez par un nouveau
+        versement (`POST /statements/{id}/paid`) ou annulez le relevé.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementDisputedEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  statement.cancelled:
+    post:
+      operationId: onStatementCancelled
+      tags: [Webhooks]
+      summary: statement.cancelled
+      description: |
+        L'équipe Woura a annulé un relevé, ou Woura a annulé le lundi un
+        brouillon de plus de 7 jours (`statement.cancellation_reason`) ; ses
+        livraisons sont de nouveau libres. Pas envoyé quand vous l'annulez
+        vous-même.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementCancelledEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
   ping:
     post:
       operationId: onPing
@@ -3249,6 +3835,15 @@ components:
         type: string
         format: uuid
       example: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+    StatementId:
+      name: statement_id
+      in: path
+      required: true
+      description: Identifiant du relevé.
+      schema:
+        type: string
+        format: uuid
+      example: 0d4e8a52-6f3b-4a1e-9c7d-2b5f8e1a9c30
     TransferId:
       name: transfer_id
       in: path
@@ -3621,6 +4216,30 @@ components:
             code: conflict
             message: "Stock insuffisant. Disponible: 4, demandé: 9"
             details: {}
+    StatementCreateConflict:
+      description: |
+        `no_eligible_shipments` (rien à relever), `currency_required`
+        (plusieurs devises : `details.currencies`), `too_many_shipments`
+        (plus de 2 000 livraisons), `idempotency_key_reused`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: currency_required
+            message: "Livraisons en plusieurs devises : un relevé par devise, précisez `currency`."
+            details:
+              currencies: [GHS, XOF]
+    StatementConflict:
+      description: "`statement_transition_not_allowed` (geste impossible dans le statut actuel), `idempotency_key_reused`."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: statement_transition_not_allowed
+            message: Impossible d'annuler un relevé au statut « Versement déclaré ».
+            details: {}
     EndpointCreateConflict:
       description: "`too_many_endpoints` (10 points au plus par environnement), `idempotency_key_reused`."
       content:
@@ -3663,7 +4282,7 @@ components:
             | 403 | `company_inactive`, `partner_suspended`, `company_not_verified`, `test_key_required`, `forbidden` |
             | 404 | `not_found` |
             | 405 | `method_not_allowed` |
-            | 409 | `transition_not_allowed`, `shipment_closed`, `idempotency_key_reused`, `conflict`, `merchant_plan_limit`, `partnership_not_pending`, `transfer_not_pending`, `too_many_endpoints`, `endpoint_disabled`, `sandbox_limit_reached` |
+            | 409 | `transition_not_allowed`, `shipment_closed`, `idempotency_key_reused`, `conflict`, `merchant_plan_limit`, `partnership_not_pending`, `transfer_not_pending`, `too_many_endpoints`, `endpoint_disabled`, `sandbox_limit_reached`, `no_eligible_shipments`, `currency_required`, `too_many_shipments`, `statement_transition_not_allowed` |
             | 415 | `unsupported_media_type` |
             | 429 | `rate_limited` |
             | 500 | `internal_error` |
@@ -3692,6 +4311,10 @@ components:
             - too_many_endpoints
             - endpoint_disabled
             - sandbox_limit_reached
+            - no_eligible_shipments
+            - currency_required
+            - too_many_shipments
+            - statement_transition_not_allowed
             - unsupported_media_type
             - rate_limited
             - internal_error
@@ -3706,10 +4329,9 @@ components:
             noms publics des champs, indices entre crochets et sous-champs
             après un point pour les objets imbriqués (`items[1].quantity`,
             `customer.name`), ou `non_field_errors`. Objet vide sinon.
-          additionalProperties:
-            type: array
-            items:
-              type: string
+            Exceptions : `currency_required` y met `currencies` (liste des
+            devises), `too_many_shipments` y met `shipments` et `max`.
+          additionalProperties: true
 
     Pagination:
       type: object
@@ -3777,6 +4399,17 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/StockReturn"
+    PaginatedStatements:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              description: Les relevés, sans `lines`.
+              items:
+                $ref: "#/components/schemas/Statement"
     PaginatedWebhookEndpoints:
       allOf:
         - $ref: "#/components/schemas/Pagination"
@@ -3877,6 +4510,10 @@ components:
         - stock_transfer.updated
         - stock_return.created
         - stock_return.updated
+        - statement.issued
+        - statement.confirmed
+        - statement.disputed
+        - statement.cancelled
     WebhookEventTypeOrPing:
       type: string
       description: Tous les types d'événements, `ping` compris.
@@ -3892,6 +4529,10 @@ components:
         - stock_transfer.updated
         - stock_return.created
         - stock_return.updated
+        - statement.issued
+        - statement.confirmed
+        - statement.disputed
+        - statement.cancelled
         - ping
 
     # ── Société ─────────────────────────────────────────────────────────
@@ -4057,6 +4698,7 @@ components:
         - reason
         - photo_url
         - rescheduled_for
+        - statement_id
         - created_at
         - updated_at
         - closed_at
@@ -4146,6 +4788,10 @@ components:
         rescheduled_for:
           $ref: "#/components/schemas/NullableDateTime"
           description: Date de report quand `status` vaut `rescheduled`, `null` pour tout autre statut.
+        statement_id:
+          type: [string, "null"]
+          format: uuid
+          description: Le relevé COD qui solde cette livraison, `null` tant qu'elle n'est sur aucun relevé (ou si le sien a été annulé).
         created_at:
           $ref: "#/components/schemas/DateTime"
         updated_at:
@@ -4232,6 +4878,194 @@ components:
         recorded_at:
           $ref: "#/components/schemas/DateTime"
           description: Quand Woura l'a écrit.
+
+    # ── Relevés ─────────────────────────────────────────────────────────
+
+    StatementStatus:
+      type: string
+      description: |
+        - `draft` : créé par vous, invisible du marchand ;
+        - `issued` : émis, le marchand le voit ;
+        - `paid` : versement déclaré, réponse du marchand attendue ;
+        - `confirmed` : le marchand a reçu l'argent (final) ;
+        - `disputed` : contesté par le marchand ;
+        - `cancelled` : annulé, ses livraisons sont de nouveau libres (final).
+      enum: [draft, issued, paid, confirmed, disputed, cancelled]
+    PaymentMethod:
+      type: string
+      enum: [mobile_money, bank_transfer, cash, other]
+    Statement:
+      type: object
+      description: |
+        Un relevé COD entre votre société et un marchand, dans une devise.
+        `lines` n'est présent que dans `GET /statements/{id}` et les réponses
+        des `POST` (ni dans la liste, ni dans les webhooks).
+      required:
+        - id
+        - object
+        - status
+        - origin
+        - merchant
+        - currency
+        - period_start
+        - period_end
+        - shipment_count
+        - cod_total
+        - delivery_fee_total
+        - closing_fee_total
+        - net_amount
+        - paid_amount
+        - payments
+        - dispute_comment
+        - cancellation_reason
+        - issued_at
+        - payment_declared_at
+        - confirmed_at
+        - disputed_at
+        - cancelled_at
+        - created_at
+        - updated_at
+        - events
+      properties:
+        id:
+          type: string
+          format: uuid
+        object:
+          type: string
+          const: statement
+        status:
+          $ref: "#/components/schemas/StatementStatus"
+        origin:
+          type: string
+          description: "`delivery_company` : créé par vous ; `automatic` : émis par Woura le lundi."
+          enum: [delivery_company, automatic]
+        merchant:
+          $ref: "#/components/schemas/MerchantSummary"
+        currency:
+          type: string
+          description: Devise (code ISO 4217) des commandes du relevé.
+          example: XOF
+        period_start:
+          type: string
+          format: date
+          description: Premier jour couvert (jour du marchand).
+        period_end:
+          type: string
+          format: date
+          description: Dernier jour couvert (jour du marchand), compris.
+        shipment_count:
+          type: integer
+        cod_total:
+          $ref: "#/components/schemas/Amount"
+          description: Encaissé à la porte, somme des `cod_collected`.
+        delivery_fee_total:
+          $ref: "#/components/schemas/Amount"
+          description: Vos frais de livraison, que vous gardez.
+        closing_fee_total:
+          $ref: "#/components/schemas/Amount"
+          description: Vos frais de confirmation (closing), que vous gardez ; `0` pour une commande confirmée par un call center.
+        net_amount:
+          $ref: "#/components/schemas/Amount"
+          description: "Dû au marchand : `cod_total − delivery_fee_total − closing_fee_total`. Négatif : le marchand vous doit vos frais."
+        paid_amount:
+          $ref: "#/components/schemas/Amount"
+          description: Somme de vos versements déclarés.
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatementPayment"
+        dispute_comment:
+          type: string
+          description: Le commentaire de la dernière contestation du marchand, chaîne vide sinon.
+        cancellation_reason:
+          type: string
+        issued_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        payment_declared_at:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: Votre dernière déclaration de versement.
+        confirmed_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        disputed_at:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: La dernière contestation.
+        cancelled_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+        events:
+          type: array
+          description: Le journal, du plus ancien au plus récent.
+          items:
+            $ref: "#/components/schemas/StatementEvent"
+        lines:
+          type: array
+          description: Une ligne par livraison, montants figés à la création du relevé.
+          items:
+            $ref: "#/components/schemas/StatementLine"
+    StatementLine:
+      type: object
+      required: [shipment_id, order_id, order_number, delivered_at, cod_collected, delivery_fee, closing_fee, net_amount]
+      properties:
+        shipment_id:
+          type: [string, "null"]
+          format: uuid
+        order_id:
+          type: [string, "null"]
+        order_number:
+          type: string
+        delivered_at:
+          $ref: "#/components/schemas/DateTime"
+          description: Le `occurred_at` de votre `delivered`, jamais après la réception de l'événement par Woura (ou l'heure où la commande a été livrée côté Woura).
+        cod_collected:
+          $ref: "#/components/schemas/Amount"
+        delivery_fee:
+          $ref: "#/components/schemas/Amount"
+        closing_fee:
+          $ref: "#/components/schemas/Amount"
+        net_amount:
+          $ref: "#/components/schemas/Amount"
+    StatementPayment:
+      type: object
+      required: [id, amount, paid_at, method, reference, proof_url, note, declared_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          $ref: "#/components/schemas/Amount"
+        paid_at:
+          $ref: "#/components/schemas/DateTime"
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+        reference:
+          type: string
+        proof_url:
+          type: string
+        note:
+          type: string
+        declared_at:
+          $ref: "#/components/schemas/DateTime"
+    StatementEvent:
+      type: object
+      required: [status, previous_status, actor, comment, occurred_at]
+      properties:
+        status:
+          $ref: "#/components/schemas/StatementStatus"
+        previous_status:
+          type: string
+          enum: ["", draft, issued, paid, confirmed, disputed, cancelled]
+        actor:
+          type: string
+          description: "`api` : vous ; `merchant` ; `woura_staff` ; `system` : l'émission du lundi."
+          enum: [merchant, delivery_company, api, call_center, woura_staff, system]
+        comment:
+          type: string
+          description: Contestation, motif d'annulation ou note du versement.
+        occurred_at:
+          $ref: "#/components/schemas/DateTime"
 
     # ── Stock ───────────────────────────────────────────────────────────
 
@@ -4651,6 +5485,66 @@ components:
                   $ref: "#/components/schemas/StockReturn"
                 previous_status:
                   $ref: "#/components/schemas/StockReturnStatus"
+    StatementIssuedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: statement.issued
+            data:
+              type: object
+              required: [statement, previous_status]
+              properties:
+                statement:
+                  $ref: "#/components/schemas/Statement"
+                previous_status:
+                  $ref: "#/components/schemas/StatementStatus"
+    StatementConfirmedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: statement.confirmed
+            data:
+              type: object
+              required: [statement, previous_status]
+              properties:
+                statement:
+                  $ref: "#/components/schemas/Statement"
+                previous_status:
+                  $ref: "#/components/schemas/StatementStatus"
+    StatementDisputedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: statement.disputed
+            data:
+              type: object
+              required: [statement, previous_status]
+              properties:
+                statement:
+                  $ref: "#/components/schemas/Statement"
+                previous_status:
+                  $ref: "#/components/schemas/StatementStatus"
+    StatementCancelledEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: statement.cancelled
+            data:
+              type: object
+              required: [statement, previous_status]
+              properties:
+                statement:
+                  $ref: "#/components/schemas/Statement"
+                previous_status:
+                  $ref: "#/components/schemas/StatementStatus"
     PingEvent:
       allOf:
         - $ref: "#/components/schemas/WebhookEvent"
@@ -4680,6 +5574,84 @@ components:
       description: Aucun champ accepté (un champ envoyé est refusé en `400`). Le corps peut être absent.
       additionalProperties: false
       maxProperties: 0
+    StatementCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [merchant_id]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+          description: La boutique (`merchant.id`).
+        currency:
+          type: string
+          maxLength: 3
+          description: Obligatoire seulement si vos livraisons à relever pour ce marchand sont en plusieurs devises.
+        period_start:
+          type: [string, "null"]
+          format: date
+          description: Par défaut, le jour de la plus ancienne livraison non relevée.
+        period_end:
+          type: [string, "null"]
+          format: date
+          description: Par défaut, aujourd'hui (jour du marchand). Jamais dans le futur.
+        issue:
+          type: boolean
+          default: false
+          description: "`true` : le relevé est émis aussitôt (le marchand le voit)."
+    StatementPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [method]
+      properties:
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+        paid_at:
+          type: [string, "null"]
+          format: date-time
+          description: Par défaut, maintenant. Jamais dans le futur.
+        amount:
+          type: [number, "null"]
+          minimum: 0
+          description: Par défaut, ce qui reste dû (`net_amount − paid_amount`, `0` au moins).
+        reference:
+          type: string
+          maxLength: 100
+          default: ""
+          description: Votre référence de transaction.
+        proof_url:
+          type: string
+          maxLength: 1000
+          description: Lien `http(s)` vers la preuve (reçu, capture).
+        note:
+          type: string
+          maxLength: 1000
+          default: ""
+    StatementCancelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          default: ""
+          description: Obligatoire sauf pour un brouillon ; le marchand le lit.
+    TestWeeklyRunRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        period_end:
+          type: [string, "null"]
+          format: date
+          description: Dernier jour relevé (aujourd'hui par défaut). Jamais dans le futur.
+    TestStatementDisputeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment:
+          type: string
+          maxLength: 1000
+          description: Le commentaire du marchand fictif.
     PartnershipAcceptRequest:
       type: object
       additionalProperties: false

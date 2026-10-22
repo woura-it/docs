@@ -59,14 +59,19 @@ Corps de chaque envoi (`POST`, JSON) :
 | `stock_transfer.updated` | Transfert accepté, refusé ou annulé par le marchand | `stock_transfer`, `previous_status` |
 | `stock_return.created` | Un retour vers un marchand a été créé (par l'API ou l'app Woura Agent) | `stock_return` |
 | `stock_return.updated` | Le marchand a accepté ou refusé votre retour | `stock_return`, `previous_status` |
+| `statement.issued` | Woura a émis un relevé pour vous le lundi ([relevés](/api-partenaires/releves)) | `statement` (sans `lines`), `previous_status` |
+| `statement.confirmed` | Le marchand confirme avoir reçu votre versement | `statement`, `previous_status` |
+| `statement.disputed` | Le marchand conteste un relevé émis ou un versement déclaré ; `dispute_comment` dit pourquoi | `statement`, `previous_status` |
+| `statement.cancelled` | L'équipe Woura a annulé un relevé, ou Woura a annulé le lundi un brouillon de plus de 7 jours (`cancellation_reason`) ; ses livraisons sont de nouveau libres | `statement`, `previous_status` |
 | `ping` | `POST /webhook-endpoints/{id}/ping` | `ping` |
 
 **Ce que vous faites vous-même ne vous revient pas pour les livraisons** : un
 statut déclaré par l'API ou depuis l'app Woura Agent n'émet pas de
 `shipment.status_changed`, et vos frais réels déclarés **par l'API** avec
 `delivered` n'émettent pas de `shipment.updated` (depuis l'app Woura Agent,
-si). Les événements de partenariat, de transfert et de retour, eux, partent
-quel qu'en soit l'auteur.
+si). De même, ce que vous faites sur un relevé (création, émission,
+versement, annulation) ne vous revient pas. Les événements de partenariat, de
+transfert et de retour, eux, partent quel qu'en soit l'auteur.
 
 **Qui reçoit.** Rien ne part vers une société désactivée ou suspendue par
 Woura, ni en live vers une société qui n'est plus vérifiée. **Révoquer une

@@ -1,0 +1,187 @@
+---
+title: "Relevés COD"
+description: "Ce que vous devez reverser à chaque marchand : relevés, versements déclarés, confirmations et contestations."
+---
+Vous encaissez à la porte, puis vous reversez au marchand. Un **relevé** fige
+la liste des livraisons concernées et ce que vous lui devez. **Woura ne
+déplace aucun argent** : vous déclarez votre versement, le marchand le
+confirme ou le conteste, et chacun garde la même trace.
+
+## Le relevé (`statement`)
+
+```json
+{
+  "id": "0d4e8a52-6f3b-4a1e-9c7d-2b5f8e1a9c30",
+  "object": "statement",
+  "status": "paid",
+  "origin": "delivery_company",
+  "merchant": {"id": "b4b6c1d2-…", "name": "Boutique Awa", "phone": "+22997000000",
+               "country": "BJ", "pickup_address": "Marché Dantokpa, allée 4, Cotonou"},
+  "currency": "XOF",
+  "period_start": "2026-10-12",
+  "period_end": "2026-10-18",
+  "shipment_count": 2,
+  "cod_total": 26500,
+  "delivery_fee_total": 3000,
+  "closing_fee_total": 0,
+  "net_amount": 23500,
+  "paid_amount": 23500,
+  "payments": [
+    {"id": "5a0c…", "amount": 23500, "paid_at": "2026-10-19T10:00:00+01:00",
+     "method": "mobile_money", "reference": "MM-778899",
+     "proof_url": "https://exemple.com/recus/778899.jpg", "note": "",
+     "declared_at": "2026-10-19T10:02:11+01:00"}
+  ],
+  "dispute_comment": "",
+  "cancellation_reason": "",
+  "issued_at": "2026-10-19T08:30:00+01:00",
+  "payment_declared_at": "2026-10-19T10:02:11+01:00",
+  "confirmed_at": null,
+  "disputed_at": null,
+  "cancelled_at": null,
+  "created_at": "2026-10-19T08:29:40+01:00",
+  "updated_at": "2026-10-19T10:02:11+01:00",
+  "events": [
+    {"status": "draft", "previous_status": "", "actor": "api", "comment": "",
+     "occurred_at": "2026-10-19T08:29:40+01:00"},
+    {"status": "issued", "previous_status": "draft", "actor": "api", "comment": "",
+     "occurred_at": "2026-10-19T08:30:00+01:00"},
+    {"status": "paid", "previous_status": "issued", "actor": "api", "comment": "",
+     "occurred_at": "2026-10-19T10:02:11+01:00"}
+  ],
+  "lines": [
+    {"shipment_id": "6f1c2a8e-…", "order_id": "393093856815339", "order_number": "#0412",
+     "delivered_at": "2026-10-14T16:20:00+01:00", "cod_collected": 15000,
+     "delivery_fee": 1500, "closing_fee": 0, "net_amount": 13500},
+    {"shipment_id": "a2e9…", "order_id": "393093856815512", "order_number": "#0419",
+     "delivered_at": "2026-10-17T11:05:00+01:00", "cod_collected": 11500,
+     "delivery_fee": 1500, "closing_fee": 0, "net_amount": 10000}
+  ]
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `status` | `draft`, `issued`, `paid`, `confirmed`, `disputed`, `cancelled` (voir [Le cycle](#le-cycle)) |
+| `origin` | `delivery_company` : créé par vous ; `automatic` : émis par Woura le lundi (voir [Chaque lundi](#chaque-lundi-les-relevés-émis-par-woura)) |
+| `merchant` | La boutique, détaillée comme dans une livraison (selon le partenariat) |
+| `currency` | **Un relevé par devise** : celle des commandes qu'il reprend |
+| `period_start`, `period_end` | Les jours de livraison couverts, **bornes comprises, dans le fuseau du marchand** |
+| `cod_total` | Ce que vous avez encaissé à la porte (la somme des `cod_collected`) |
+| `delivery_fee_total` | Vos frais de livraison, que vous gardez |
+| `closing_fee_total` | Les frais de confirmation que vous gardez quand vous avez confirmé la commande au téléphone pour le marchand ; `0` sur une commande confirmée par un call center |
+| `net_amount` | Ce que vous devez au marchand : `cod_total − delivery_fee_total − closing_fee_total`. **Négatif** : c'est le marchand qui vous doit vos frais (commandes payées en ligne, par exemple) |
+| `paid_amount` | La somme de vos versements déclarés |
+| `payments` | Vos versements, du plus ancien au plus récent. `method` : `mobile_money`, `bank_transfer`, `cash`, `other` |
+| `dispute_comment`, `disputed_at` | La dernière contestation du marchand, et pourquoi |
+| `events` | Le journal : qui a fait quoi (`actor` : `api` pour vous, `merchant`, `woura_staff`, `system` pour l'émission du lundi) |
+| `lines` | Une ligne par livraison, **montants figés à la création du relevé**. Seulement dans `GET /statements/{id}` et les réponses des `POST` ; ni la liste ni les webhooks ne les portent |
+
+**Ce qu'un relevé reprend** : vos livraisons `delivered` **encore actives**
+pour ce marchand dans cette devise, livrées dans la période, et qui ne sont
+sur aucun autre relevé (sauf un relevé annulé). Une livraison close après
+coup (commande reprise par le marchand) n'est pas relevée, et une commande
+déjà sur un relevé non annulé n'y entre pas une seconde fois (livrée, reprise
+par le marchand, puis livrée de nouveau : un seul encaissement). La date de
+livraison retenue est votre `occurred_at`, jamais postérieure à la réception
+de l'événement par Woura. 2 000 livraisons au plus par relevé. Une fois
+relevée, la livraison porte son `statement_id`.
+
+Les montants suivent la règle du « montant à reverser » que le marchand voit
+dans Woura ; une retouche de la commande après la création du relevé ne le
+change pas.
+
+## Le cycle
+
+```
+draft ──issue──▶ issued ──paid──▶ paid ──(marchand) confirme──▶ confirmed
+                   │                 │
+                   └──(marchand) conteste──┴──▶ disputed ──paid──▶ paid
+                                                   └──cancel──▶ cancelled
+```
+
+| Statut | Qui l'y met | Le marchand le voit |
+|---|---|---|
+| `draft` | vous (`POST /statements`) | non : vérifiez-le, émettez-le ou annulez-le |
+| `issued` | vous (`/issue`, ou `issue: true` à la création), ou Woura le lundi | oui, il est prévenu |
+| `paid` | vous (`/paid`) : un versement déclaré | oui, il est prévenu et invité à confirmer |
+| `confirmed` | le marchand : il a reçu l'argent. **Statut final** | oui |
+| `disputed` | le marchand, avec un commentaire, dès l'émission ou après un versement | oui |
+| `cancelled` | vous (`/cancel`), ou l'équipe Woura | oui, sauf un brouillon |
+
+- Vous pouvez déclarer plusieurs versements (`issued`, `paid` ou `disputed`
+  → `paid`) : un paiement en deux fois, un complément.
+- **Après une contestation**, c'est à vous : déclarez un nouveau versement (un
+  complément, une nouvelle preuve) — le marchand confirme ou conteste de
+  nouveau —, ou annulez le relevé. Woura n'arbitre pas.
+- **Annuler rend les livraisons** : elles redeviennent libres
+  (`statement_id: null`) et repartent dans votre prochain relevé. Vous pouvez
+  annuler un brouillon, un relevé émis ou contesté ; pas un relevé dont le
+  versement attend la réponse du marchand. Le motif (`reason`) est
+  obligatoire dès que le marchand a vu le relevé. Les versements déclarés
+  restent sur le relevé annulé : le relevé suivant redemande le net entier,
+  déclarez-y ce que vous avez déjà versé (avec la même référence).
+- **Un brouillon non émis en 7 jours est annulé le lundi** par Woura
+  (`statement.cancelled`, `actor: system`) : ses livraisons passent dans le
+  relevé d'office (voir [Chaque lundi](#chaque-lundi-les-relevés-émis-par-woura)).
+- **Net nul ou négatif** : rien à reverser au marchand (commandes payées en
+  ligne, par exemple). Une fois le compte réglé entre vous, déclarez `paid`
+  sans montant (`0`) : le marchand est prévenu que le relevé est soldé et le
+  confirme.
+- Un geste impossible dans le statut actuel répond
+  `409 statement_transition_not_allowed`.
+
+## Points d'accès
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/statements` | Vos relevés, sans les lignes. Filtres : `status` (plusieurs, séparés par des virgules), `merchant`, `currency`, `updated_since`, `ordering` (`-created_at` par défaut, `created_at`, `-updated_at`, `updated_at`) |
+| POST | `/statements` | Créer un relevé (`201`, avec ses lignes) |
+| GET | `/statements/{id}` | Un relevé, avec ses lignes |
+| POST | `/statements/{id}/issue` | Émettre un brouillon : le marchand le voit |
+| POST | `/statements/{id}/paid` | Déclarer un versement |
+| POST | `/statements/{id}/cancel` | Annuler (`{"reason": "…"}`) |
+
+**Créer** — tout est facultatif sauf le marchand :
+
+```json
+{"merchant_id": "b4b6c1d2-…", "currency": "XOF",
+ "period_start": "2026-10-12", "period_end": "2026-10-18", "issue": false}
+```
+
+- `period_end` : par défaut aujourd'hui (jour du marchand) ; jamais dans le
+  futur. `period_start` : par défaut, la plus ancienne livraison non relevée.
+- `currency` : inutile si toutes les livraisons à relever sont dans la même
+  devise ; sinon `409 currency_required`, avec la liste dans
+  `details.currencies` — faites un relevé par devise.
+- `issue: true` crée le relevé directement émis.
+- `404` : boutique inconnue ou supprimée, ou avec qui vous n'avez ni
+  partenariat ni livraison. `409 no_eligible_shipments` : rien à relever sur la période.
+  `409 too_many_shipments` : plus de 2 000 livraisons, raccourcissez la
+  période.
+
+**Déclarer un versement** — `method` seul est obligatoire :
+
+```json
+{"method": "mobile_money", "paid_at": "2026-10-19T10:00:00+01:00", "amount": 23500,
+ "reference": "MM-778899", "proof_url": "https://exemple.com/recus/778899.jpg",
+ "note": "Versement de la semaine 42"}
+```
+
+Sans `amount`, ce qui reste dû (`net_amount − paid_amount`, et `0` si rien
+ne l'est) ; sans `paid_at`, maintenant (jamais dans le futur). `proof_url` :
+un lien `http(s)` vers votre reçu, que le marchand et Woura peuvent ouvrir.
+
+## Chaque lundi, les relevés émis par Woura
+
+Chaque **lundi matin**, si vous avez **une clé live active**, Woura émet pour
+vous un relevé par marchand et par devise avec **tout ce qui reste non relevé
+à la fin du dimanche** (jours du marchand), et vous envoie
+`statement.issued`. Ces relevés ont `origin: "automatic"` et se traitent comme
+les vôtres : déclarez le versement, ou annulez-en un pour le refaire à votre
+façon. Pour garder la main sur la période, émettez vos relevés avant le
+lundi : il ne reste alors rien à relever. Vos brouillons de plus de 7 jours
+sont d'abord annulés. Au-delà de 2 000 livraisons pour un marchand, les plus
+anciennes partent et le reste attend le lundi suivant (la période affichée
+reste celle demandée). En test, `POST /test/statements/weekly-run` lance la
+même émission sur votre bac à sable ([mode test](/api-partenaires/mode-test)).
