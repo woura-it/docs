@@ -252,6 +252,7 @@
                   "api-partenaires/marchands-et-stock",
                   "api-partenaires/zones",
                   "api-partenaires/releves",
+                  "api-partenaires/confirmation",
                   "api-partenaires/webhooks",
                   "api-partenaires/mode-test"
                 ]

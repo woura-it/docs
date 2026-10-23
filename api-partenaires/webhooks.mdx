@@ -64,6 +64,10 @@ Corps de chaque envoi (`POST`, JSON) :
 | `statement.disputed` | Le marchand conteste un relevé émis ou un versement déclaré ; `dispute_comment` dit pourquoi | `statement`, `previous_status` |
 | `statement.cancelled` | L'équipe Woura a annulé un relevé, ou Woura a annulé le lundi un brouillon de plus de 7 jours (`cancellation_reason`) ; ses livraisons sont de nouveau libres | `statement`, `previous_status` |
 | `zones.updated` | L'équipe Woura a remplacé votre grille par un fichier que vous lui avez envoyé ([zones et tarifs](/api-partenaires/zones)) | `zones` (`count`, `updated_at`, `updated_by`) — sans les zones : relisez `GET /zones` |
+| `order_confirmation.requested` | Un marchand vous demande de confirmer ses commandes ([confirmation des commandes](/api-partenaires/confirmation)) | `merchant` (avec `partnership.order_confirmation`) |
+| `order_confirmation.updated` | Le marchand a coupé l'option (ou elle s'est coupée avec le partenariat), ou il a accepté ou refusé le prix d'appel que vous proposiez | `merchant` |
+| `order.confirmation_requested` | Une nouvelle commande du marchand attend votre appel | `order` |
+| `order.confirmation_withdrawn` | Une commande qui vous attendait vous est retirée : le marchand l'a traitée lui-même, l'option est coupée, la commande est supprimée | `order` (`status: withdrawn`, `withdrawn_reason`) |
 | `ping` | `POST /webhook-endpoints/{id}/ping` | `ping` |
 
 **Ce que vous faites vous-même ne vous revient pas pour les livraisons** : un
@@ -71,7 +75,10 @@ statut déclaré par l'API ou depuis l'app Woura Agent n'émet pas de
 `shipment.status_changed`, et vos frais réels déclarés **par l'API** avec
 `delivered` n'émettent pas de `shipment.updated` (depuis l'app Woura Agent,
 si). De même, ce que vous faites sur un relevé (création, émission,
-versement, annulation) ou sur votre grille (`PUT /zones`) ne vous revient pas. Les événements de partenariat, de
+versement, annulation), sur votre grille (`PUT /zones`), ou sur une commande à
+confirmer (vos réponses, votre accord ou votre prix d'appel) ne vous revient
+pas — sauf `shipment.assigned` quand vous confirmez : c'est votre nouvelle
+livraison. Les événements de partenariat, de
 transfert et de retour, eux, partent quel qu'en soit l'auteur.
 
 **Qui reçoit.** Rien ne part vers une société désactivée ou suspendue par

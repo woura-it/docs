@@ -24,6 +24,11 @@ Simuler ce que ferait un marchand :
 | POST | `/test/statements/weekly-run` | L'émission du lundi sur votre bac à sable, jusqu'à `period_end` (aujourd'hui par défaut) → `statement.issued` pour chaque relevé émis |
 | POST | `/test/statements/{id}/confirm` | Le marchand confirme le versement d'un relevé `paid` → `statement.confirmed` |
 | POST | `/test/statements/{id}/dispute` | Le marchand conteste un relevé `issued` ou `paid` (`{"comment"}` facultatif) → `statement.disputed` |
+| POST | `/test/orders` | Une commande à confirmer chez le marchand fictif (`items`, `customer`, `address_details`, `delivery_fee`, `delivery_fee_included`, `note`, tous facultatifs) ; l'option y est active d'office → `order.confirmation_requested` |
+| POST | `/test/orders/{id}/withdraw` | Le marchand confirme (`{"reason": "confirmed_by_merchant"}`) ou annule (`cancelled_by_merchant`) lui-même → `order.confirmation_withdrawn` |
+| POST | `/test/order-confirmation-requests` | Un nouveau marchand fictif, déjà partenaire, allume l'option (`merchant_name`) → `order_confirmation.requested` ; répondez par `/merchants/{id}/order-confirmation/accept` ou `/refuse` |
+| POST | `/test/merchants/{id}/order-confirmation/disable` | Le marchand coupe l'option → `order_confirmation.updated`, et `order.confirmation_withdrawn` pour chaque commande encore en attente |
+| POST | `/test/merchants/{id}/order-confirmation/call-fee` | Le marchand répond à votre prix d'appel (`{"decision": "accept"}` ou `"refuse"`) → `order_confirmation.updated` |
 
 `POST /test/shipments` (tout est facultatif) :
 
@@ -67,3 +72,7 @@ Vos réponses peuvent encore faire évoluer cette API :
    envoyez-nous le fichier (une ligne par ville ou commune : pays, ville,
    commune, tarif, délai en heures, votre code de zone).
 6. Volume par jour, nombre de marchands à amener, et contact technique.
+7. Confirmez-vous les commandes par téléphone pour vos e-commerçants
+   ([confirmation des commandes](/api-partenaires/confirmation)) ? Si oui : avec quels résultats d'appel
+   (les nôtres : confirmée, annulée, à rappeler, injoignable), et à quel prix
+   par commande confirmée ?
