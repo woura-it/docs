@@ -1,0 +1,182 @@
+---
+title: "Confirmation des commandes"
+description: "L'option qui vous envoie les commandes d'un marchand avant leur confirmation : vous appelez le client, puis vous répondez par l'API."
+---
+Beaucoup d'e-commerçants font confirmer chaque commande par téléphone avant
+de l'expédier. Si vous le faites pour eux, Woura vous envoie leurs commandes
+**avant toute confirmation** : vous appelez le client, puis vous répondez par
+l'API. Une commande confirmée vous est aussitôt confiée, comme une
+assignation normale ([livraisons](/api-partenaires/livraisons), `shipment.assigned`).
+
+## L'option, marchand par marchand
+
+- **Éteinte par défaut.** Le marchand l'allume pour vous dans son app : vous
+  recevez `order_confirmation.requested`. Elle ne vaut qu'une fois que vous
+  l'avez **acceptée** : `POST /merchants/{id}/order-confirmation/accept`, ou
+  `/refuse` (`{"reason": "…"}` facultatif).
+- **Active**, chaque commande **créée ensuite** dans la boutique et en attente
+  de confirmation vous est envoyée (`order.confirmation_requested`), une
+  dizaine de secondes après sa création (plus tard pour une commande que le
+  marchand doit d'abord débloquer). Les commandes d'avant restent au
+  marchand — y compris celles qu'une synchronisation de sa boutique Shopify,
+  WooCommerce ou YouCan importe après coup : leur date d'origine fait foi. Une
+  commande créée déjà confirmée, ou une commande de test du marchand, ne vous
+  est pas envoyée. Il faut que votre société soit vérifiée et active.
+- **Vous êtes seuls à confirmer** les commandes de ce marchand : tant que
+  l'option est active, ses autres agents (call centers) ne voient plus celles
+  qui vous ont été envoyées, même confirmées. Si le partenariat est suspendu
+  ou coupé par le plan du marchand, elles leur redeviennent visibles et vous
+  ne pouvez plus répondre. Une seule société par marchand.
+- **Le marchand garde la main.** S'il confirme, annule ou change lui-même le
+  statut d'une commande qui vous attend, elle vous est retirée
+  (`order.confirmation_withdrawn`). Il peut aussi couper l'option, qui se
+  coupe d'elle-même si votre partenariat est suspendu ou résilié :
+  `order_confirmation.updated`, et un retrait (`option_disabled`) pour chaque
+  commande encore en attente — elles retournent au marchand.
+- **Pas de retour automatique.** Une commande à laquelle vous n'avez pas
+  répondu reste chez vous ; 24 heures après son envoi, le marchand est
+  prévenu (une fois) et peut la reprendre.
+
+L'option est dans le partenariat (`GET /merchants/{id}`) :
+
+```json
+"order_confirmation": {
+  "status": "active",
+  "requested_at": "2026-10-23T09:00:00+00:00",
+  "responded_at": "2026-10-23T10:15:00+00:00",
+  "active_since": "2026-10-23T10:15:00+00:00",
+  "refusal_reason": "",
+  "call_fee": 0,
+  "currency": "XOF",
+  "proposed_call_fee": 300,
+  "proposal_status": "pending",
+  "proposed_at": "2026-10-23T10:20:00+00:00"
+}
+```
+
+| `status` | Sens |
+|---|---|
+| `off` | Éteinte (jamais allumée, ou coupée) |
+| `requested` | Le marchand l'a allumée : à vous d'accepter ou de refuser |
+| `active` | Vous l'avez acceptée : les nouvelles commandes vous arrivent |
+| `refused` | Vous l'avez refusée (`refusal_reason`) ; le marchand peut la redemander |
+
+## Vos frais d'appel
+
+**0 au départ.** Proposez un prix par commande confirmée, dans la devise du
+marchand (`currency`) : `POST /merchants/{id}/order-confirmation/call-fee`,
+`{"amount": 300}`. Il ne s'applique **qu'une fois accepté par le marchand**
+dans Woura : vous recevez `order_confirmation.updated` (`proposal_status:
+accepted`, `call_fee: 300`). Refusé (`proposal_status: refused`), vos appels
+restent au prix en vigueur. Le prix vaut pour les confirmations qui suivent
+l'accord, jamais pour les précédentes ; si vous en proposez un autre pendant
+que le marchand lit le premier, il doit relire avant d'accepter. C'est une dépense du marchand, comptée comme celle d'un
+call center : il n'est **pas retenu sur vos [relevés COD](/api-partenaires/releves)**, qui gardent
+leur calcul.
+
+## La commande à confirmer (`order`)
+
+Même forme dans `GET /orders/{id}` et dans les événements `order.*` ; les
+champs de la commande sont ceux d'une [livraison](/api-partenaires/livraisons) :
+
+```json
+{
+  "id": "744548743351724",
+  "object": "order",
+  "status": "pending",
+  "order_id": "744548743351724",
+  "order_number": "0042",
+  "merchant": {"id": "b4b6c1d2-…", "name": "Boutique Awa", "phone": "+22997000000", "country": "BJ", "pickup_address": "…"},
+  "customer": {"name": "Awa K.", "phone": "+22997111111", "address": "Fidjrossè, rue 12", "city": "Cotonou", "country": "BJ", "details": "Près du marché"},
+  "items": [{"name": "Robe wax", "variant": "38", "sku": "RW-38", "quantity": 2, "unit_price": 7500, "product_id": "8812…"}],
+  "cod_amount": 15000,
+  "delivery_fee": 1500,
+  "delivery_fee_included": true,
+  "currency": "XOF",
+  "payment": {"status": "unpaid", "paid_amount": 0},
+  "note": "Appeler après 18 h",
+  "created_at": "2026-10-23T11:02:00+00:00",
+  "callback_at": null,
+  "reason": "",
+  "withdrawn_reason": null,
+  "shipment_id": null,
+  "calls": [],
+  "requested_at": "2026-10-23T11:02:10+00:00",
+  "handled_at": null,
+  "updated_at": "2026-10-23T11:02:10+00:00",
+  "closed_at": null
+}
+```
+
+`id` est l'identifiant de la commande Woura (une chaîne de chiffres).
+
+| `status` | Sens |
+|---|---|
+| `pending` | À appeler : vous n'avez encore rien répondu |
+| `callback` | Le client demande à être rappelé (`callback_at`) |
+| `unreachable` | Client injoignable : rappelez-le, la commande reste chez vous |
+| `confirmed` | Confirmée par vous : elle vous est confiée (`shipment_id`) |
+| `cancelled` | Annulée par vous (`reason`) |
+| `withdrawn` | Retirée : `withdrawn_reason` dit pourquoi |
+
+`withdrawn_reason` : `confirmed_elsewhere` (le marchand l'a confirmée, ou fait
+avancer, lui-même), `cancelled_elsewhere` (annulée par le marchand),
+`taken_over` (le marchand a changé son statut autrement), `option_disabled`
+(option coupée), `order_deleted` (commande supprimée).
+
+- Tant qu'elle est ouverte (`pending`, `callback`, `unreachable`), la commande
+  est rendue telle qu'elle est : relisez-la avant d'appeler, le marchand a pu
+  la retoucher.
+- **Close**, elle garde ce que vous en saviez à la clôture, **sans le
+  client** (nom, téléphone et adresse vides) : pour une commande confirmée,
+  le client est dans la livraison (`shipment_id`).
+- `calls` : vos appels enregistrés (`outcome` : `confirmed`, `cancelled`,
+  `callback`, `unreachable` ; `note`, `duration_seconds`, `call_fee`,
+  `recorded_at`).
+
+## Points d'accès
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/orders?status=&merchant=&updated_since=&ordering=` | Vos commandes à confirmer et leur suite. `status` : un ou plusieurs, séparés par des virgules. `ordering` : `requested_at` (défaut), `-requested_at`, `updated_at`, `-updated_at`, `callback_at` |
+| GET | `/orders/{id}` | Une commande. `404` si elle ne vous a pas été envoyée — même réponse qu'une commande inexistante |
+| POST | `/orders/{id}/confirm` | Le client confirme |
+| POST | `/orders/{id}/cancel` | Le client annule : `{"reason"}` **obligatoire** |
+| POST | `/orders/{id}/callback` | À rappeler : `{"callback_at"}` **obligatoire**, dans le futur, à 30 jours au plus ; `reason` facultatif |
+| POST | `/orders/{id}/unreachable` | Injoignable : `reason` facultatif |
+| POST | `/merchants/{id}/order-confirmation/accept` · `/refuse` | Répondre au marchand qui allume l'option |
+| POST | `/merchants/{id}/order-confirmation/call-fee` | Proposer un prix par commande confirmée (`{"amount"}`) |
+
+Chaque réponse peut porter `note` (votre note d'appel, gardée au journal des
+appels `calls` : elle ne remplace pas la note du client) et `duration_seconds`.
+`Idempotency-Key` est obligatoire, comme sur tout `POST` ([idempotence](/api-partenaires/introduction#idempotence)).
+
+`POST /orders/{id}/confirm` (tout est facultatif) :
+
+```json
+{
+  "city": "Cotonou",
+  "address_details": "Fidjrossè, rue 12, maison bleue",
+  "delivery_fee": 1500,
+  "negotiated_total": 14000,
+  "negotiation_note": "Remise accordée au téléphone",
+  "note": "Client joint, livraison après 18 h",
+  "duration_seconds": 95
+}
+```
+
+- Sans `city` ni `address_details`, ceux de la commande ; une commande sans
+  ville ni adresse est refusée (`400 validation_error`) : précisez-les.
+- Sans `delivery_fee`, le tarif de votre [grille](/api-partenaires/zones) pour la ville.
+- La commande passe **confirmée puis en livraison**, et vous est confiée :
+  votre livraison est créée (`shipment.assigned`, comme toute assignation) et
+  rendue dans la réponse (`shipment`). Elle suit ensuite le cycle d'une [livraison](/api-partenaires/livraisons).
+- En mode **dépôt**, vous devez détenir le stock (`409 insufficient_stock`) ;
+  en ramassage, rien n'est contrôlé.
+
+Après `callback` ou `unreachable`, la commande reste chez vous : rappelez, puis
+répondez de nouveau (`confirm`, `cancel`…). Une commande confirmée ou annulée
+ne se rouvre pas (`409 order_confirmation_closed`).
+
+**Le client reçoit les mêmes messages** (WhatsApp, e-mail) que si le marchand
+ou son call center avait répondu : vous n'avez rien à lui envoyer.

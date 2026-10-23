@@ -25,7 +25,8 @@ commandes qu'avec un partenariat **accepté**.
     "response_message": "",
     "requested_at": "2026-10-20T11:00:00+01:00",
     "responded_at": "2026-10-20T15:00:00+01:00",
-    "updated_at": "2026-10-20T15:00:00+01:00"
+    "updated_at": "2026-10-20T15:00:00+01:00",
+    "order_confirmation": {"status": "off", "call_fee": 0, "currency": "XOF", "…": "…"}
   }
 }
 ```
@@ -36,6 +37,8 @@ commandes qu'avec un partenariat **accepté**.
 Le mode de stock, l'acceptation automatique, l'adresse de ramassage et
 l'**assignation automatique** (`auto_assign`, désactivée par défaut, voir
 [zones et tarifs](/api-partenaires/zones)) sont réglés par le marchand.
+`order_confirmation` : la [confirmation des commandes](/api-partenaires/confirmation) par téléphone,
+`null` pour un partenariat `refused` ou `terminated`.
 
 | Méthode | Chemin | Rôle |
 |---|---|---|

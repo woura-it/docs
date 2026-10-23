@@ -2,13 +2,14 @@ openapi: 3.1.0
 
 info:
   title: API partenaires Woura — livraison
-  version: "1.2"
+  version: "1.3"
   description: |
     L'API des sociétés de livraison partenaires de Woura : recevoir les
     commandes que les marchands vous confient (livraisons), déclarer leurs
     statuts, répondre aux demandes de partenariat, gérer le stock en dépôt,
     tenir votre grille de zones et tarifs, tenir vos relevés COD avec les
-    marchands et recevoir des webhooks signés.
+    marchands, confirmer par téléphone les commandes des marchands qui vous
+    le demandent (v1.3) et recevoir des webhooks signés.
 
     **Authentification.** `Authorization: Bearer wk_live_…` ou
     `Bearer wk_test_…`. Les clés sont créées par Woura ; une clé live ne
@@ -95,6 +96,17 @@ tags:
       d'un partenariat qui l'a activée (`auto_assign`, désactivée par défaut).
       `PUT /zones` remplace toute la grille d'un bloc. Une clé de test lit et
       remplace la grille de son bac à sable.
+  - name: Confirmation
+    description: |
+      La confirmation des commandes par téléphone (v1.3), une option par
+      marchand, éteinte par défaut : le marchand l'allume, vous l'acceptez.
+      Active, ses nouvelles commandes vous arrivent avant toute confirmation
+      (`order.confirmation_requested`), vous êtes seuls à les confirmer, et
+      vous répondez après votre appel : `confirm` (la commande vous est
+      confiée, `shipment.assigned`), `cancel`, `callback`, `unreachable`. Le
+      marchand garde la main : s'il traite la commande lui-même, elle vous
+      est retirée (`order.confirmation_withdrawn`). Frais d'appel à 0 tant
+      que le marchand n'a pas accepté votre prix.
   - name: Stock
     description: |
       Le stock que les marchands vous confient en dépôt (mode `depot`) :
@@ -247,6 +259,17 @@ paths:
                       requested_at: "2026-10-22T10:04:51.733902+00:00"
                       responded_at: null
                       updated_at: "2026-10-22T10:04:51.733902+00:00"
+                      order_confirmation:
+                        status: "off"
+                        requested_at: null
+                        responded_at: null
+                        active_since: null
+                        refusal_reason: ""
+                        call_fee: 0
+                        currency: XOF
+                        proposed_call_fee: null
+                        proposal_status: null
+                        proposed_at: null
                   - id: b4b6e0d2-5c3a-4f8e-a1d7-2c9e6f0b8a45
                     name: Boutique Awa
                     phone: "+22997000000"
@@ -262,6 +285,17 @@ paths:
                       requested_at: "2026-10-20T14:22:08.115630+00:00"
                       responded_at: "2026-10-20T14:22:08.115204+00:00"
                       updated_at: "2026-10-21T07:45:19.208311+00:00"
+                      order_confirmation:
+                        status: "off"
+                        requested_at: null
+                        responded_at: null
+                        active_since: null
+                        refusal_reason: ""
+                        call_fee: 0
+                        currency: XOF
+                        proposed_call_fee: null
+                        proposal_status: null
+                        proposed_at: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -311,6 +345,17 @@ paths:
                       requested_at: "2026-10-20T14:22:08.115630+00:00"
                       responded_at: "2026-10-20T14:22:08.115204+00:00"
                       updated_at: "2026-10-21T07:45:19.208311+00:00"
+                      order_confirmation:
+                        status: "off"
+                        requested_at: null
+                        responded_at: null
+                        active_since: null
+                        refusal_reason: ""
+                        call_fee: 0
+                        currency: XOF
+                        proposed_call_fee: null
+                        proposal_status: null
+                        proposed_at: null
                 refuse:
                   summary: Partenariat refusé (détails masqués)
                   value:
@@ -325,6 +370,7 @@ paths:
                       requested_at: "2026-10-22T10:04:51.733902+00:00"
                       responded_at: "2026-10-22T10:31:02.950418+00:00"
                       updated_at: "2026-10-22T10:31:02.951077+00:00"
+                      order_confirmation: null
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -389,6 +435,17 @@ paths:
                   requested_at: "2026-10-22T10:04:51.733902+00:00"
                   responded_at: "2026-10-22T10:31:02.950418+00:00"
                   updated_at: "2026-10-22T10:31:02.951077+00:00"
+                  order_confirmation:
+                    status: "off"
+                    requested_at: null
+                    responded_at: null
+                    active_since: null
+                    refusal_reason: ""
+                    call_fee: 0
+                    currency: XOF
+                    proposed_call_fee: null
+                    proposal_status: null
+                    proposed_at: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -454,6 +511,7 @@ paths:
                   requested_at: "2026-10-22T10:04:51.733902+00:00"
                   responded_at: "2026-10-22T10:31:02.950418+00:00"
                   updated_at: "2026-10-22T10:31:02.951077+00:00"
+                  order_confirmation: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -464,6 +522,451 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/PartnershipRefuseConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchants/{shop_id}/order-confirmation/accept:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: acceptOrderConfirmation
+      tags: [Confirmation]
+      summary: Accepter de confirmer les commandes du marchand
+      description: |
+        Le marchand a allumé l'option (`order_confirmation.status:
+        requested`, webhook `order_confirmation.requested`). L'accepter la
+        rend active : chaque commande créée ensuite dans sa boutique, en
+        attente de confirmation, vous est envoyée (`order.confirmation_requested`)
+        et vous êtes seuls à pouvoir la confirmer. Frais d'appel à 0.
+
+        `409 order_confirmation_not_requested` si le marchand n'a rien
+        demandé (ou si c'est déjà réglé) ; `409 partnership_not_active` si le
+        partenariat n'est pas accepté. Pas d'événement en retour.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: "Le marchand, `partnership.order_confirmation.status` à `active`."
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchants/{shop_id}/order-confirmation/refuse:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: refuseOrderConfirmation
+      tags: [Confirmation]
+      summary: Refuser de confirmer les commandes du marchand
+      description: |
+        `reason` (facultatif) est montré au marchand
+        (`order_confirmation.refusal_reason`). Il peut redemander plus tard.
+        `409 order_confirmation_not_requested` s'il n'y a rien à refuser.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderConfirmationRefuseRequest"
+            example:
+              reason: Notre équipe d'appel ne couvre pas encore cette ville.
+      responses:
+        "200":
+          description: "Le marchand, `partnership.order_confirmation.status` à `refused`."
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /merchants/{shop_id}/order-confirmation/call-fee:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: proposeCallFee
+      tags: [Confirmation]
+      summary: Proposer un prix par commande confirmée
+      description: |
+        Les appels sont à 0 au départ. Le prix proposé (dans la devise du
+        marchand, `order_confirmation.currency`) **ne s'applique qu'une fois
+        accepté par le marchand** dans Woura (`order_confirmation.updated`,
+        `proposal_status: accepted`) ; refusé, les appels restent au prix en
+        vigueur. Une nouvelle proposition remplace celle qui attendait (le
+        marchand doit alors relire avant d'accepter).
+        Il vaut pour les confirmations qui suivent l'accord. Ce prix est une
+        dépense du marchand : il n'est pas retenu sur vos relevés COD.
+
+        `409 order_confirmation_not_active` si l'option n'est pas active.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallFeeProposalRequest"
+            example:
+              amount: 300
+      responses:
+        "200":
+          description: "Le marchand, `order_confirmation.proposal_status` à `pending`."
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders:
+    get:
+      operationId: listOrdersToConfirm
+      tags: [Confirmation]
+      summary: Vos commandes à confirmer
+      description: |
+        Les commandes que les marchands vous ont envoyées pour que vous les
+        confirmiez par téléphone, ouvertes ou closes. Une commande n'y
+        apparaît qu'une fois annoncée (`order.confirmation_requested`).
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Un ou plusieurs statuts, séparés par des virgules.
+          schema:
+            type: string
+          example: pending,callback,unreachable
+        - name: merchant
+          in: query
+          required: false
+          description: Identifiant d'une boutique.
+          schema:
+            type: string
+            format: uuid
+        - name: updated_since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: ordering
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [requested_at, -requested_at, updated_at, -updated_at, callback_at]
+            default: requested_at
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Une page de commandes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedOrdersToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{order_id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      operationId: getOrderToConfirm
+      tags: [Confirmation]
+      summary: Une commande à confirmer
+      description: |
+        `404 not_found` si elle ne vous a pas été envoyée — la même réponse
+        qu'une commande inexistante. Relisez-la avant d'appeler : le
+        marchand a pu la retoucher.
+      responses:
+        "200":
+          description: La commande.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{order_id}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: confirmOrder
+      tags: [Confirmation]
+      summary: Le client confirme
+      description: |
+        Le client confirme : la commande passe confirmée puis en livraison, et
+        vous est confiée comme une assignation normale. Votre livraison est
+        créée (`shipment.assigned`) et rendue dans la réponse (`shipment`).
+        Le client reçoit les mêmes messages que pour une confirmation par le
+        marchand ou son call center.
+
+        Sans `city` ni `address_details`, ceux de la commande (`400
+        validation_error` si elle n'en a pas). Sans `delivery_fee`, le tarif
+        de votre grille pour la ville. En mode `depot`, vous devez détenir le
+        stock (`409 insufficient_stock`).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderConfirmRequest"
+            example:
+              city: Cotonou
+              address_details: Fidjrossè, rue 12, maison bleue
+              note: Client joint, livraison après 18 h
+              duration_seconds: 95
+      responses:
+        "200":
+          description: La commande après votre réponse.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{order_id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: cancelOrder
+      tags: [Confirmation]
+      summary: Le client annule
+      description: |
+        La commande est annulée avec votre motif (`reason`, obligatoire),
+        comme si le marchand ou son call center l'avait annulée.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCancelRequest"
+            example:
+              reason: Le client ne veut plus la commande.
+      responses:
+        "200":
+          description: La commande après votre réponse.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{order_id}/callback:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: callbackOrder
+      tags: [Confirmation]
+      summary: Rappeler plus tard
+      description: |
+        Le client demande à être rappelé : `callback_at` (dans le futur, à
+        30 jours au plus, obligatoire). La commande reste chez vous
+        (`status: callback`) ;
+        rappelez puis répondez de nouveau.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCallbackRequest"
+            example:
+              callback_at: "2026-10-24T10:00:00+01:00"
+              reason: Le client est au travail, rappeler demain matin.
+      responses:
+        "200":
+          description: La commande après votre réponse.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{order_id}/unreachable:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: unreachableOrder
+      tags: [Confirmation]
+      summary: Client injoignable
+      description: |
+        Le client ne répond pas. La commande reste chez vous
+        (`status: unreachable`) : rappelez-le, puis répondez de nouveau.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUnreachableRequest"
+            example:
+              reason: Messagerie.
+      responses:
+        "200":
+          description: La commande après votre réponse.
+          headers:
+            Idempotent-Replayed:
+              $ref: "#/components/headers/IdempotentReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
         "429":
@@ -2841,6 +3344,174 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /test/orders:
+    post:
+      operationId: createTestOrderToConfirm
+      tags: [Mode test]
+      summary: Simuler une commande à confirmer
+      description: |
+        Une commande en attente chez le marchand fictif de votre bac à sable,
+        envoyée aussitôt (`order.confirmation_requested` vers vos points
+        `test`). L'option y est active d'office. Tout est facultatif.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestOrderRequest"
+      responses:
+        "201":
+          description: La commande à confirmer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "409":
+          $ref: "#/components/responses/SandboxLimitConflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /test/orders/{order_id}/withdraw:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: withdrawTestOrder
+      tags: [Mode test]
+      summary: Le marchand fictif traite la commande lui-même
+      description: |
+        `confirmed_by_merchant` ou `cancelled_by_merchant` : la commande vous
+        est retirée (`order.confirmation_withdrawn`, `withdrawn_reason`
+        `confirmed_elsewhere` ou `cancelled_elsewhere`).
+        `409 order_confirmation_closed` si elle ne vous attend plus.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestWithdrawRequest"
+      responses:
+        "200":
+          description: "La commande, `status: withdrawn`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderToConfirm"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+
+  /test/order-confirmation-requests:
+    post:
+      operationId: createTestOrderConfirmationRequest
+      tags: [Mode test]
+      summary: Un marchand fictif allume l'option
+      description: |
+        Un nouveau marchand fictif, déjà partenaire, vous demande de
+        confirmer ses commandes (`order_confirmation.requested`). Répondez
+        par `/merchants/{id}/order-confirmation/accept` ou `/refuse`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestOrderConfirmationRequest"
+      responses:
+        "201":
+          description: "Le marchand fictif, `order_confirmation.status` à `requested`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "409":
+          $ref: "#/components/responses/SandboxLimitConflict"
+
+  /test/merchants/{shop_id}/order-confirmation/disable:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: disableTestOrderConfirmation
+      tags: [Mode test]
+      summary: Le marchand fictif coupe l'option
+      description: |
+        `order_confirmation.updated`, et `order.confirmation_withdrawn`
+        (`option_disabled`) pour chaque commande encore en attente.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: "Le marchand fictif, `order_confirmation.status` à `off`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /test/merchants/{shop_id}/order-confirmation/call-fee:
+    parameters:
+      - $ref: "#/components/parameters/ShopId"
+    post:
+      operationId: answerTestCallFee
+      tags: [Mode test]
+      summary: Le marchand fictif répond à votre prix d'appel
+      description: |
+        `accept` (le prix s'applique) ou `refuse` → `order_confirmation.updated`.
+        `409 no_pending_call_fee` si aucun prix n'attend sa réponse.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestCallFeeDecisionRequest"
+      responses:
+        "200":
+          description: Le marchand fictif.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/ForbiddenTestOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConfirmationConflict"
+
   /test/statements/weekly-run:
     post:
       operationId: runTestWeeklyStatements
@@ -3443,6 +4114,17 @@ webhooks:
                     requested_at: "2026-10-22T10:04:51.733902+00:00"
                     responded_at: null
                     updated_at: "2026-10-22T10:04:51.733902+00:00"
+                    order_confirmation:
+                      status: "off"
+                      requested_at: null
+                      responded_at: null
+                      active_since: null
+                      refusal_reason: ""
+                      call_fee: 0
+                      currency: XOF
+                      proposed_call_fee: null
+                      proposal_status: null
+                      proposed_at: null
       responses:
         "2XX":
           $ref: "#/components/responses/WebhookReceived"
@@ -3499,6 +4181,17 @@ webhooks:
                     requested_at: "2026-10-20T14:22:08.115630+00:00"
                     responded_at: "2026-10-20T14:22:08.115204+00:00"
                     updated_at: "2026-10-21T07:45:19.208311+00:00"
+                    order_confirmation:
+                      status: "off"
+                      requested_at: null
+                      responded_at: null
+                      active_since: null
+                      refusal_reason: ""
+                      call_fee: 0
+                      currency: XOF
+                      proposed_call_fee: null
+                      proposal_status: null
+                      proposed_at: null
       responses:
         "2XX":
           $ref: "#/components/responses/WebhookReceived"
@@ -3556,6 +4249,17 @@ webhooks:
                     requested_at: "2026-10-20T14:22:08.115630+00:00"
                     responded_at: "2026-10-20T14:22:08.115204+00:00"
                     updated_at: "2026-10-20T14:22:08.115630+00:00"
+                    order_confirmation:
+                      status: "off"
+                      requested_at: null
+                      responded_at: null
+                      active_since: null
+                      refusal_reason: ""
+                      call_fee: 0
+                      currency: XOF
+                      proposed_call_fee: null
+                      proposal_status: null
+                      proposed_at: null
       responses:
         "2XX":
           $ref: "#/components/responses/WebhookReceived"
@@ -3903,6 +4607,110 @@ webhooks:
         "2XX":
           $ref: "#/components/responses/WebhookReceived"
 
+  order_confirmation.requested:
+    post:
+      operationId: onOrderConfirmationRequested
+      tags: [Webhooks]
+      summary: order_confirmation.requested
+      description: |
+        Un marchand vous demande de confirmer ses commandes par téléphone.
+        Acceptez (`POST /merchants/{id}/order-confirmation/accept`) ou
+        refusez (`/refuse`).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderConfirmationRequestedEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  order_confirmation.updated:
+    post:
+      operationId: onOrderConfirmationUpdated
+      tags: [Webhooks]
+      summary: order_confirmation.updated
+      description: |
+        Le marchand a coupé l'option (ou elle s'est coupée avec le
+        partenariat), ou il a accepté ou refusé votre prix d'appel. Lisez
+        `merchant.partnership.order_confirmation`. Pas envoyé pour ce que
+        vous faites vous-même.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderConfirmationUpdatedEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  order.confirmation_requested:
+    post:
+      operationId: onOrderConfirmationRequestedForOrder
+      tags: [Webhooks]
+      summary: order.confirmation_requested
+      description: |
+        Une nouvelle commande attend votre appel (`order`, `status:
+        pending`), une dizaine de secondes après sa création.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderToConfirmEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
+  order.confirmation_withdrawn:
+    post:
+      operationId: onOrderConfirmationWithdrawn
+      tags: [Webhooks]
+      summary: order.confirmation_withdrawn
+      description: |
+        Une commande qui vous attendait vous est retirée
+        (`withdrawn_reason`) : le marchand l'a traitée lui-même, l'option est
+        coupée, ou la commande est supprimée. Ne l'appelez plus.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookSignature"
+        - $ref: "#/components/parameters/WebhookEventType"
+        - $ref: "#/components/parameters/WebhookEventId"
+        - $ref: "#/components/parameters/WebhookDeliveryId"
+        - $ref: "#/components/parameters/WebhookUserAgent"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderToConfirmEvent"
+      responses:
+        "2XX":
+          $ref: "#/components/responses/WebhookReceived"
+
   ping:
     post:
       operationId: onPing
@@ -4045,6 +4853,15 @@ components:
         type: string
         format: uuid
       example: 6f1c2a8e-3b9e-4c55-9a51-2d0f8f7b1e40
+    OrderId:
+      name: order_id
+      in: path
+      required: true
+      description: Identifiant de la commande Woura (chiffres seulement).
+      schema:
+        type: string
+        pattern: "^[0-9]+$"
+      example: "744548743351724"
     StatementId:
       name: statement_id
       in: path
@@ -4426,6 +5243,27 @@ components:
             code: conflict
             message: "Stock insuffisant. Disponible: 4, demandé: 9"
             details: {}
+    OrderConfirmationConflict:
+      description: |
+        - `order_confirmation_closed` : la commande ne vous attend plus (déjà
+          confirmée ou annulée par vous, ou retirée) ;
+        - `order_confirmation_not_active` : l'option n'est pas (ou plus)
+          active avec ce marchand ;
+        - `order_confirmation_not_requested` : le marchand n'a rien demandé ;
+        - `partnership_not_active` : le partenariat n'est pas accepté ;
+        - `no_pending_call_fee` : aucun prix d'appel n'attend de réponse ;
+        - `insufficient_stock` : en mode `depot`, vous ne détenez pas le stock ;
+        - `order_not_confirmable` : la commande est déjà en livraison, livrée,
+          annulée ou retournée ;
+        - `idempotency_key_reused`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: order_confirmation_closed
+            message: Cette commande n'est plus en attente de votre confirmation.
+            details: {}
     StatementCreateConflict:
       description: |
         `no_eligible_shipments` (rien à relever), `currency_required`
@@ -4492,7 +5330,7 @@ components:
             | 403 | `company_inactive`, `partner_suspended`, `company_not_verified`, `test_key_required`, `forbidden` |
             | 404 | `not_found` |
             | 405 | `method_not_allowed` |
-            | 409 | `transition_not_allowed`, `shipment_closed`, `idempotency_key_reused`, `conflict`, `merchant_plan_limit`, `partnership_not_pending`, `transfer_not_pending`, `too_many_endpoints`, `endpoint_disabled`, `sandbox_limit_reached`, `no_eligible_shipments`, `currency_required`, `too_many_shipments`, `statement_transition_not_allowed` |
+            | 409 | `transition_not_allowed`, `shipment_closed`, `idempotency_key_reused`, `conflict`, `merchant_plan_limit`, `partnership_not_pending`, `transfer_not_pending`, `too_many_endpoints`, `endpoint_disabled`, `sandbox_limit_reached`, `no_eligible_shipments`, `currency_required`, `too_many_shipments`, `statement_transition_not_allowed`, `order_confirmation_closed`, `order_confirmation_not_active`, `order_confirmation_not_requested`, `partnership_not_active`, `no_pending_call_fee`, `insufficient_stock`, `order_not_confirmable` |
             | 415 | `unsupported_media_type` |
             | 429 | `rate_limited` |
             | 500 | `internal_error` |
@@ -4525,6 +5363,13 @@ components:
             - currency_required
             - too_many_shipments
             - statement_transition_not_allowed
+            - order_confirmation_closed
+            - order_confirmation_not_active
+            - order_confirmation_not_requested
+            - partnership_not_active
+            - no_pending_call_fee
+            - insufficient_stock
+            - order_not_confirmable
             - unsupported_media_type
             - rate_limited
             - internal_error
@@ -4725,6 +5570,10 @@ components:
         - statement.disputed
         - statement.cancelled
         - zones.updated
+        - order_confirmation.requested
+        - order_confirmation.updated
+        - order.confirmation_requested
+        - order.confirmation_withdrawn
     WebhookEventTypeOrPing:
       type: string
       description: Tous les types d'événements, `ping` compris.
@@ -4745,6 +5594,10 @@ components:
         - statement.disputed
         - statement.cancelled
         - zones.updated
+        - order_confirmation.requested
+        - order_confirmation.updated
+        - order.confirmation_requested
+        - order.confirmation_withdrawn
         - ping
 
     # ── Société ─────────────────────────────────────────────────────────
@@ -4971,7 +5824,7 @@ components:
               $ref: "#/components/schemas/Partnership"
     Partnership:
       type: object
-      required: [id, status, stock_mode, auto_accept, auto_assign, message, response_message, requested_at, responded_at, updated_at]
+      required: [id, status, stock_mode, auto_accept, auto_assign, message, response_message, requested_at, responded_at, updated_at, order_confirmation]
       properties:
         id:
           type: string
@@ -5003,6 +5856,13 @@ components:
           $ref: "#/components/schemas/NullableDateTime"
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        order_confirmation:
+          description: |
+            La confirmation des commandes par téléphone (v1.3) ; `null` pour
+            un partenariat refusé ou résilié.
+          oneOf:
+            - $ref: "#/components/schemas/OrderConfirmationSettings"
+            - type: "null"
     MerchantRef:
       type: object
       required: [id, name]
@@ -5964,8 +6824,329 @@ components:
                       type: string
                       const: Bonjour de Woura.
 
+    # ── Confirmation des commandes (v1.3) ──────────────────────────────
+
+    OrderConfirmationSettings:
+      type: object
+      description: |
+        La confirmation des commandes par téléphone avec ce marchand :
+        `off` (éteinte, par défaut), `requested` (le marchand l'a allumée,
+        à vous de répondre), `active`, `refused`.
+      required: [status, requested_at, responded_at, active_since, refusal_reason, call_fee, currency, proposed_call_fee, proposal_status, proposed_at]
+      properties:
+        status:
+          type: string
+          enum: [off, requested, active, refused]
+        requested_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        responded_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        active_since:
+          $ref: "#/components/schemas/NullableDateTime"
+          description: Les commandes créées depuis vous sont envoyées. `null` hors `active`.
+        refusal_reason:
+          type: string
+        call_fee:
+          type: integer
+          description: Prix en vigueur par commande confirmée (0 au départ ; 0 hors `active`).
+        currency:
+          type: [string, "null"]
+          description: Devise du marchand.
+        proposed_call_fee:
+          type: [integer, "null"]
+          description: Votre dernière proposition.
+        proposal_status:
+          type: [string, "null"]
+          enum: [pending, accepted, refused, null]
+        proposed_at:
+          $ref: "#/components/schemas/NullableDateTime"
+    OrderToConfirmStatus:
+      type: string
+      enum: [pending, callback, unreachable, confirmed, cancelled, withdrawn]
+    OrderCall:
+      type: object
+      required: [outcome, note, duration_seconds, call_fee, recorded_at]
+      properties:
+        outcome:
+          type: string
+          enum: [confirmed, cancelled, callback, unreachable, wrong_number]
+        note:
+          type: string
+        duration_seconds:
+          type: integer
+        call_fee:
+          $ref: "#/components/schemas/Amount"
+        recorded_at:
+          $ref: "#/components/schemas/DateTime"
+    OrderToConfirm:
+      type: object
+      description: |
+        Une commande qu'un marchand vous envoie pour que vous la confirmiez
+        par téléphone. Ouverte (`pending`, `callback`, `unreachable`) : la
+        commande telle qu'elle est. Close : ce que vous en saviez à la
+        clôture, client vidé (le client d'une commande confirmée est dans la
+        livraison, `shipment_id`).
+      required: [id, object, status, order_id, order_number, merchant, customer, items, cod_amount, delivery_fee, delivery_fee_included, currency, payment, note, created_at, callback_at, reason, withdrawn_reason, shipment_id, calls, requested_at, handled_at, updated_at, closed_at]
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9]+$"
+          description: Identifiant de la commande Woura.
+        object:
+          type: string
+          const: order
+        status:
+          $ref: "#/components/schemas/OrderToConfirmStatus"
+        order_id:
+          type: string
+        order_number:
+          type: string
+        merchant:
+          $ref: "#/components/schemas/MerchantSummary"
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShipmentItem"
+        cod_amount:
+          $ref: "#/components/schemas/Amount"
+        delivery_fee:
+          $ref: "#/components/schemas/Amount"
+        delivery_fee_included:
+          type: boolean
+        currency:
+          type: string
+        payment:
+          $ref: "#/components/schemas/ShipmentPayment"
+        note:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        callback_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        reason:
+          type: string
+          description: Le motif de votre dernière réponse (annulation, rappel, injoignable).
+        withdrawn_reason:
+          type: [string, "null"]
+          enum: [confirmed_elsewhere, cancelled_elsewhere, taken_over, option_disabled, order_deleted, null]
+        shipment_id:
+          type: [string, "null"]
+          format: uuid
+          description: Votre livraison, une fois la commande confirmée.
+        shipment:
+          $ref: "#/components/schemas/Shipment"
+          description: Seulement dans la réponse de `POST /orders/{id}/confirm`.
+        calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderCall"
+        requested_at:
+          $ref: "#/components/schemas/DateTime"
+        handled_at:
+          $ref: "#/components/schemas/NullableDateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+        closed_at:
+          $ref: "#/components/schemas/NullableDateTime"
+    PaginatedOrdersToConfirm:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/OrderToConfirm"
+    OrderConfirmationRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: order_confirmation.requested
+            data:
+              type: object
+              required: [merchant]
+              properties:
+                merchant:
+                  $ref: "#/components/schemas/Merchant"
+    OrderConfirmationUpdatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              const: order_confirmation.updated
+            data:
+              type: object
+              required: [merchant]
+              properties:
+                merchant:
+                  $ref: "#/components/schemas/Merchant"
+    OrderToConfirmEvent:
+      allOf:
+        - $ref: "#/components/schemas/WebhookEvent"
+        - type: object
+          properties:
+            type:
+              enum: [order.confirmation_requested, order.confirmation_withdrawn]
+            data:
+              type: object
+              required: [order]
+              properties:
+                order:
+                  $ref: "#/components/schemas/OrderToConfirm"
+
     # ── Corps de requête ────────────────────────────────────────────────
 
+    OrderConfirmRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        city:
+          type: string
+          maxLength: 255
+          description: "La ville confirmée avec le client (défaut : celle de la commande)."
+        address_details:
+          type: string
+          maxLength: 1000
+          description: "L'adresse confirmée (défaut : celle de la commande)."
+        delivery_fee:
+          type: [integer, "null"]
+          minimum: 0
+          description: "Frais de livraison (défaut : votre grille pour la ville)."
+        negotiated_total:
+          type: [number, "null"]
+          minimum: 0
+          description: Montant des articles négocié au téléphone.
+        negotiation_note:
+          type: string
+          maxLength: 1000
+        note:
+          type: string
+          maxLength: 1000
+          description: Votre note d'appel, gardée au journal (`calls`) ; elle ne remplace pas la note du client.
+        duration_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+    OrderCancelRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+        note:
+          type: string
+          maxLength: 1000
+        duration_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+    OrderCallbackRequest:
+      type: object
+      additionalProperties: false
+      required: [callback_at]
+      properties:
+        callback_at:
+          type: string
+          format: date-time
+          description: Dans le futur, à 30 jours au plus.
+        reason:
+          type: string
+          maxLength: 1000
+        note:
+          type: string
+          maxLength: 1000
+        duration_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+    OrderUnreachableRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+        note:
+          type: string
+          maxLength: 1000
+        duration_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+    OrderConfirmationRefuseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+    CallFeeProposalRequest:
+      type: object
+      additionalProperties: false
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          description: Prix par commande confirmée, dans la devise du marchand.
+    TestOrderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/TestShipmentItem"
+        delivery_fee:
+          type: integer
+          minimum: 0
+          default: 1500
+        delivery_fee_included:
+          type: boolean
+          default: true
+        customer:
+          $ref: "#/components/schemas/TestCustomer"
+        address_details:
+          type: string
+          maxLength: 300
+        note:
+          type: string
+          maxLength: 500
+    TestWithdrawRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [confirmed_by_merchant, cancelled_by_merchant]
+    TestOrderConfirmationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        merchant_name:
+          type: string
+          maxLength: 100
+          default: Marchand de test
+    TestCallFeeDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [accept, refuse]
     EmptyRequest:
       type: object
       description: Aucun champ accepté (un champ envoyé est refusé en `400`). Le corps peut être absent.
