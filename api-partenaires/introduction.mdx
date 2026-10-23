@@ -6,7 +6,7 @@ description: "Recevoir les commandes de vos marchands Woura dans votre système,
 Woura vous transmet les commandes que les marchands vous confient, par webhooks, et vous les faites avancer par l'API : vos livreurs restent dans votre système, le marchand et son client suivent la livraison dans Woura.
 
 <Info>
-  Pas de portail : vos clés vous sont remises par Woura, vous gérez vos webhooks par l'API. La référence de chaque route est dans le groupe **Référence**.
+  Votre système reste le vôtre : tout passe par l'API et les webhooks. Vous créez vos clés vous-même sur partner.woura.africa, page **Développeurs** de votre espace livraison, où vous réglez aussi vos webhooks. La référence de chaque route est dans le groupe **Référence**.
 </Info>
 
 ## Principes
@@ -53,10 +53,35 @@ Les chemins répondent avec ou sans barre finale (`/shipments` comme
 
 ## Clés et environnements
 
-Woura crée vos clés et vous les transmet. **Le secret n'est montré qu'une
-fois** à sa création : Woura n'en garde que le début (préfixe) et une
-empreinte. Une clé perdue se remplace : demandez-en une nouvelle, l'ancienne
-est révoquée.
+Vous créez vos clés sur **partner.woura.africa**, page **Développeurs** de
+votre espace livraison, connecté avec le compte Woura de votre société ; ou
+l'équipe Woura les crée pour vous. **Le secret n'est montré qu'une fois** à
+sa création : Woura n'en garde que le début (préfixe) et une empreinte. Une
+clé perdue se remplace : créez-en une nouvelle et révoquez l'ancienne (même
+page). Révoquer une clé désactive les points de webhook créés avec elle, ou
+dont elle a changé l'adresse ou le secret, ou qu'elle a réactivés.
+
+<Steps>
+  <Step title="Ouvrez la page Développeurs">
+    Connectez-vous sur partner.woura.africa avec le compte de votre société, cliquez sur **Livraison** en haut de la page, puis sur l'onglet **Développeurs**.
+  </Step>
+  <Step title="Créez une clé">
+    Dans **Clés API**, cliquez sur **Créer une clé**, choisissez **Test** (ou **Production** une fois votre société vérifiée), donnez-lui un nom si vous voulez, puis **Créer la clé**.
+  </Step>
+  <Step title="Copiez-la tout de suite">
+    La clé s'affiche une seule fois. Copiez-la dans le coffre de secrets de votre serveur, puis **J'ai copié, fermer**.
+  </Step>
+</Steps>
+
+<Warning>
+  Une clé de production ouvre les noms, téléphones et adresses des clients de vos marchands. Gardez-la sur votre serveur : jamais dans une application mobile, une page web ou un message.
+</Warning>
+
+La page demande votre mot de passe avant de créer une clé de production, de
+révoquer une clé, de renouveler le secret d'un point, de créer ou de
+réactiver un point `live` ; la confirmation vaut 5 minutes, dans l'onglet où
+vous l'avez faite. Elle garde 10
+clés actives au plus par environnement.
 
 | | Clé de test `wk_test_…` | Clé live `wk_live_…` |
 |---|---|---|
@@ -144,7 +169,8 @@ clé avec une autre méthode, un autre chemin ou un autre corps est refusée
 
 ## Démarrer
 
-1. Recevez votre clé de test de Woura ; `GET /me` doit répondre `200`.
+1. Créez votre clé de test sur la page **Développeurs** ; `GET /me` doit
+   répondre `200`.
 2. Enregistrez un point de webhook `test` (`POST /webhook-endpoints`), gardez
    le `secret`, vérifiez la signature avec `POST /webhook-endpoints/{id}/ping`.
 3. Créez une commande de test (`POST /test/shipments`), recevez
@@ -165,7 +191,8 @@ clé avec une autre méthode, un autre chemin ou un autre corps est refusée
    demande d'option (`/test/order-confirmation-requests`).
 7. Dédoublonnez sur `id`, renvoyez toujours le même `Idempotency-Key` pour un
    même geste, et gérez les `409`.
-8. Une fois votre société vérifiée, Woura vous remet une clé live ;
+8. Une fois votre société vérifiée, créez votre clé live sur la page
+   **Développeurs** ;
    enregistrez vos points `live`, chargez votre vraie grille (`PUT /zones`)
    — elle vous place dans l'annuaire des marchands —, puis envoyez votre lien
    d'invitation à vos e-commerçants.
