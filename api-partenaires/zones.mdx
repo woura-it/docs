@@ -1,0 +1,158 @@
+---
+title: "Zones et tarifs"
+description: "Votre grille par pays, ville et commune : l'annuaire des marchands, les frais proposés à l'assignation, l'assignation automatique."
+---
+Votre **grille** dit où vous livrez, à quel tarif et en combien de temps.
+Vous la chargez et la tenez à jour par l'API. Chez Woura, elle sert à trois
+choses :
+
+1. **L'annuaire des marchands.** Un marchand ne vous trouve dans son annuaire
+   que si votre société est vérifiée par Woura et qu'une de vos zones
+   **actives** est dans le pays de sa boutique. Les sociétés qui couvrent le
+   plus de ses commandes (villes de livraison des 90 derniers jours) passent
+   en tête ; sa fiche montre vos villes couvertes et vos tarifs mini et maxi.
+2. **Les frais proposés.** Quand un marchand vous confie une commande, sa
+   fenêtre d'assignation est pré-remplie avec le tarif de la zone qui couvre
+   la ville de livraison ; il peut le changer. Une commande confiée sans frais
+   saisis (par un call center, par exemple) prend ce tarif. Exception : quand
+   le client paie la livraison en plus (frais non inclus) et qu'une course lui
+   a déjà été annoncée, c'est elle qui reste. `delivery_fee` de la livraison
+   est ce que le marchand a retenu, `zone` la zone de votre grille qui
+   correspond ([livraisons](/api-partenaires/livraisons)).
+3. **L'assignation automatique**, si le marchand l'active sur votre
+   partenariat (`auto_assign`, **désactivée par défaut**) : une commande qui
+   passe confirmée — par le marchand, son call center ou le client sur
+   WhatsApp —, sans livreur, et dont la ville est dans vos zones vous est
+   confiée sans clic, au tarif de la zone (sauf course déjà annoncée au
+   client). Il faut que votre société soit vérifiée et, en mode `depot`, que
+   vous déteniez le stock des articles. Vous recevez `shipment.assigned`
+   comme d'habitude (`actor: system` au journal).
+
+## La zone
+
+```json
+{
+  "country": "BJ",
+  "city": "Cotonou",
+  "district": "Fidjrossè",
+  "fee": 1500,
+  "currency": "XOF",
+  "delivery_time_hours": 24,
+  "code": "CTN-04",
+  "active": true
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `country` | **Obligatoire.** Code ISO à deux lettres, dans la zone franc CFA : `BJ`, `BF`, `CI`, `ML`, `NE`, `SN`, `TG` (XOF) ; `CM`, `CG`, `GA`, `TD` (XAF) |
+| `city` | **Obligatoire.** La ville, 100 caractères au plus |
+| `district` | Commune ou quartier, facultatif. Vide : **toute la ville** |
+| `fee` | **Obligatoire.** Votre tarif, entier, en unités de la devise (`1500` = 1 500 F), de 0 à 1 000 000 |
+| `currency` | Déduite du pays (`XOF` ou `XAF`). Facultative à l'envoi ; si vous la donnez, elle doit être celle du pays |
+| `delivery_time_hours` | Délai annoncé, en heures (1 à 720), facultatif |
+| `code` | Votre code de zone (50 caractères au plus), facultatif, rendu tel quel dans les livraisons |
+| `active` | `true` par défaut. `false` : la zone est gardée mais ne compte plus (ni annuaire, ni frais, ni assignation automatique) — pour suspendre une ville sans la retirer |
+
+Une même combinaison pays + ville + commune n'apparaît qu'une fois ; la
+comparaison ignore casse, accents et ponctuation (« Fidjrossè » et
+« FIDJROSSE » sont la même commune).
+
+## Quelle zone pour une commande
+
+La ville de livraison d'une commande est un texte libre, tapé par le client ou
+le marchand. Woura la compare à votre grille **sans casse, sans accents, sans
+ponctuation** (« ABOMEY-CALAVI » = « Abomey Calavi »), dans le pays de la
+commande (à défaut, celui de la boutique) :
+
+1. Parmi vos zones de cette ville, une **commune nommée** dans la ville ou
+   dans les précisions d'adresse (« Fidjrossè, rue 12 ») l'emporte (`match:
+   "district"`) ;
+2. sinon, la zone de la **ville entière** (`district` vide) ;
+3. sinon, si toutes vos communes de cette ville ont le même tarif, celui-là ;
+   sinon, aucune zone (tarifs différents, commune inconnue) ;
+4. une ville saisie qui est l'une de vos communes (« Fidjrossè » tapé comme
+   ville) prend cette commune.
+
+Une zone dans une autre devise que la commande ne compte pas.
+
+**Conseils.** Une ligne par ville entière, puis une ligne par commune dont le
+tarif diffère. Les écritures courantes d'une même ville (« Calavi » et
+« Abomey-Calavi ») se déclarent en deux lignes.
+
+## Points d'accès
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/zones?country=` | Votre grille (non paginée), filtrable par pays |
+| PUT | `/zones` | **Remplace toute la grille**, d'un bloc. `Idempotency-Key` obligatoire |
+
+`GET /zones` :
+
+```json
+{
+  "object": "zone_list",
+  "count": 2,
+  "updated_at": "2026-10-22T10:00:00+00:00",
+  "updated_by": "api",
+  "zones": [
+    {"country": "BJ", "city": "Cotonou", "district": "", "fee": 1000, "currency": "XOF",
+     "delivery_time_hours": 24, "code": "CTN", "active": true},
+    {"country": "BJ", "city": "Cotonou", "district": "Fidjrossè", "fee": 1500, "currency": "XOF",
+     "delivery_time_hours": 24, "code": "CTN-04", "active": true}
+  ]
+}
+```
+
+`updated_by` : `api` (vous), `woura_staff` (un fichier importé par l'équipe
+Woura), `null` avant votre première grille.
+
+`PUT /zones` prend `{"zones": [ … ]}` — la **liste complète** : toute zone
+absente est retirée. Il rend la grille comme `GET /zones` (`200`) ; vous
+pouvez donc relire, modifier et renvoyer. 2 000 zones au plus. Une liste vide
+retire toutes vos zones (et vous retire de l'annuaire).
+
+**Validation stricte, tout ou rien** : une seule zone fausse et rien n'est
+modifié ; toutes les erreurs sont rendues, par position :
+
+```json
+{
+  "code": "validation_error",
+  "message": "Grille refusée : 2 erreur(s). Rien n'a été modifié.",
+  "details": {
+    "zones[1].country": ["Pays hors de la zone franc CFA prise en charge : BF, BJ, CG, CI, CM, GA, ML, NE, SN, TD, TG."],
+    "zones[3].fee": ["Nombre entier attendu."]
+  }
+}
+```
+
+Un champ inconnu est refusé, `"1500"` (texte) ou `1500.5` aussi.
+
+**Clé de test** : `GET` et `PUT /zones` lisent et remplacent la grille de
+votre **bac à sable**, jamais la vraie. `POST /test/shipments` sans
+`delivery_fee` prend le tarif de cette grille pour la ville du client ([mode test](/api-partenaires/mode-test)).
+
+**Par fichier.** Si vous préférez envoyer votre grille en fichier (CSV,
+mêmes colonnes), l'équipe Woura l'importe pour vous : elle remplace alors
+toute la grille, et vous recevez `zones.updated` ([webhooks](/api-partenaires/webhooks)).
+
+## L'annuaire des marchands
+
+`GET /me` → `directory` dit où les marchands vous trouvent :
+
+```json
+{"listed": false, "countries": ["BJ"], "reasons": ["not_verified"]}
+```
+
+| `reasons` | Ce qui vous retire de l'annuaire |
+|---|---|
+| `not_verified` | Votre société n'est pas (ou plus) vérifiée par Woura |
+| `inactive` | Votre société est désactivée par Woura |
+| `account_disabled` | Le compte de votre société est désactivé |
+| `partner_suspended` | Votre compte partenaire est suspendu |
+| `no_active_zone` | Aucune zone active |
+
+`countries` : les pays de vos zones actives. **Avant votre première grille**,
+le pays déclaré à votre inscription en tient lieu (sans tri par ville) ; dès
+votre premier `PUT /zones`, seuls les pays de votre grille comptent. Un
+marchand déjà relié à vous vous voit toujours, quel que soit l'annuaire.
