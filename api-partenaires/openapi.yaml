@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: API partenaires Woura — livraison
-  version: "1.3"
+  version: "1.4"
   description: |
     L'API des sociétés de livraison partenaires de Woura : recevoir les
     commandes que les marchands vous confient (livraisons), déclarer leurs
@@ -12,8 +12,10 @@ info:
     le demandent (v1.3) et recevoir des webhooks signés.
 
     **Authentification.** `Authorization: Bearer wk_live_…` ou
-    `Bearer wk_test_…`. Les clés sont créées par Woura ; une clé live ne
-    fonctionne que pour une société vérifiée. Une clé de test agit dans un bac
+    `Bearer wk_test_…`. Vous créez vos clés sur partner.woura.africa, page
+    Développeurs de votre espace livraison (ou l'équipe Woura les crée pour
+    vous) ; une clé live ne s'obtient et ne fonctionne que pour une société
+    vérifiée. Une clé de test agit dans un bac
     à sable propre à votre société (commandes fictives, aucun message envoyé,
     aucun stock réel déplacé) ; les routes `/test/…` lui sont réservées.
 
@@ -4773,9 +4775,10 @@ components:
         - `403 company_not_verified` : clé live d'une société qui n'est plus
           vérifiée.
 
-        Révoquer une clé désactive aussi les points de webhook créés avec elle
-        (motif « Clé API qui l'a créé révoquée. ») et abandonne leurs envois
-        en attente. Réactivez-les avec votre nouvelle clé du même
+        Révoquer une clé désactive aussi les points de webhook créés avec elle,
+        ou dont elle a changé l'adresse ou le secret, ou qu'elle a réactivés
+        (motif « Clé API qui l'a créé ou modifié révoquée. »), et abandonne
+        leurs envois en attente. Réactivez-les avec votre nouvelle clé du même
         environnement (`PATCH /webhook-endpoints/{id}`, `enabled: true`).
 
   headers:
@@ -6425,8 +6428,9 @@ components:
           description: |
             Pourquoi le point est désactivé (chaîne vide s'il est actif). Woura
             désactive un point qui échoue 20 fois de suite depuis plus de
-            24 heures, et les points créés avec une clé révoquée (« Clé API
-            qui l'a créé révoquée. »).
+            24 heures, et les points créés ou modifiés (adresse, secret,
+            réactivation) avec une clé révoquée (« Clé API qui l'a créé ou
+            modifié révoquée. »).
         consecutive_failures:
           type: integer
           description: Échecs d'envoi consécutifs (remis à zéro au premier succès).
@@ -6494,8 +6498,8 @@ components:
           description: Cause du dernier échec (« Réponse HTTP 500 », redirection non suivie, délai dépassé…), chaîne vide sinon.
         trigger:
           type: string
-          enum: [automatic, api_retry, woura_retry]
-          description: "`automatic` : envoi d'origine ; `api_retry` : renvoi par l'API ; `woura_retry` : renvoi par l'équipe Woura."
+          enum: [automatic, api_retry, dashboard_retry, woura_retry]
+          description: "`automatic` : envoi d'origine ; `api_retry` : renvoi par l'API ; `dashboard_retry` : renvoi depuis votre page Développeurs (partner.woura.africa) ; `woura_retry` : renvoi par l'équipe Woura."
         created_at:
           $ref: "#/components/schemas/DateTime"
         succeeded_at:

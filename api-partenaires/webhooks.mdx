@@ -7,9 +7,12 @@ description: "Points de webhook, événements, signature, nouvelles tentatives e
 
 ## Vos points de webhook
 
-Vous les gérez par l'API. Chaque point appartient à l'environnement de la clé
-qui l'a créé : une clé de test crée des points `test`, qui ne reçoivent que
-les événements du bac à sable.
+Vous les gérez par l'API, ou sur votre page **Développeurs**
+(partner.woura.africa) : création, test, activation, nouveau secret,
+suppression. Chaque point appartient à l'environnement de la clé qui l'a
+créé : une clé de test crée des points `test`, qui ne reçoivent que les
+événements du bac à sable. Sur la page, vous choisissez l'environnement ; un
+point `live` demande une société vérifiée et votre mot de passe.
 
 | Méthode | Chemin | Rôle |
 |---|---|---|
@@ -83,9 +86,11 @@ transfert et de retour, eux, partent quel qu'en soit l'auteur.
 
 **Qui reçoit.** Rien ne part vers une société désactivée ou suspendue par
 Woura, ni en live vers une société qui n'est plus vérifiée. **Révoquer une
-clé désactive les points de webhook créés avec elle** (une clé qui a fuité a
-pu enregistrer l'URL d'un tiers) : réactivez les vôtres avec votre nouvelle
-clé (`PATCH {"enabled": true}`).
+clé désactive les points de webhook créés avec elle, ou dont elle a changé
+l'adresse ou le secret, ou qu'elle a réactivés** (une clé qui a fuité a pu
+enregistrer l'URL d'un tiers, ou détourner l'un de vos points) : réactivez
+les vôtres avec votre nouvelle clé (`PATCH {"enabled": true}`) ou sur votre
+page **Développeurs**.
 
 ## Signature
 
@@ -198,5 +203,11 @@ function signature_valide(string $entete, string $corpsBrut, string $secret, int
  "response_status": 503, "error": "Réponse HTTP 503", "trigger": "automatic",
  "created_at": "…", "succeeded_at": null}
 ```
+
+`trigger` : `automatic` (envoi d'origine), `api_retry` (renvoi par l'API),
+`dashboard_retry` (renvoi depuis votre page **Développeurs**), `woura_retry`
+(renvoi par l'équipe Woura). Le même journal se lit, filtré par statut, type
+d'événement et date, sur votre page **Développeurs**, qui renvoie aussi un
+envoi.
 
 Le journal est gardé 30 jours.
