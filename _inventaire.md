@@ -121,7 +121,7 @@
 | `/settings` | Général, Localisation, Produits, Notifications | — | oui |
 | `/account/settings` | Profil, Abonnement / Crédits, Encaissements | — | oui |
 | `/notifications` | « Notifications » | — | oui |
-| `/affiliation` | « Programme d'affiliation » ; « Copier », « Partager sur WhatsApp », « Mes filleuls » | 10 % du premier abonnement payé du filleul, une seule fois, versé sur le portefeuille WouraPay après 3 jours. | oui |
+| `/affiliation` | « Rejoindre le programme », « Ouvrir mon espace Affiliation » ; l'espace est sur partner.woura.africa (« Ce que vous gagnez », « Mes liens », « Kit marketing », « Conditions ») | Barème de lancement (24/10/2026) : 20 % de chaque abonnement payé pendant 12 mois depuis le premier paiement, remise filleul 20 %, plafond 250 000 F par mois ; versé sur WouraPay à la fin de chaque mois payé. | oui |
 | `/abonnement` | « Abonnement et crédits » ; « Recharger », « Acheter des crédits » ; Gratuit / Pro / Business | Visible seulement si crédit unique ouvert (`CREDIT_UNIQUE`, pilote en dev). | ? (Q4) |
 | `/forfaits` | « Forfaits & Packs » | Ancien modèle (pay-as-you-go). | ? (Q4) |
 | Recharge | « Recharger le portefeuille » ; minimum 5 000 | — | oui |
