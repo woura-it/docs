@@ -53,6 +53,9 @@ Un client rassuré rappelle moins et refuse moins à la livraison. Woura peut lu
   <Step title="Activez le suivi de commande">
     Dans **Paramètres** → **Notifications**, carte **Prévenir vos clients**, activez **Suivi de commande**. Le suivi est désactivé au départ.
   </Step>
+  <Step title="Choisissez les étapes">
+    Sous **Étapes annoncées au client**, une case par étape : **Commande acceptée**, **Commande programmée**, **En livraison**, **Livrée**, **Annulée**. Toutes sont cochées au départ. Décochez une étape pour ne plus prévenir le client à ce moment-là, ni sur WhatsApp ni par e-mail. Si vous payez en crédits, le prix d'un message s'affiche sous les cases.
+  </Step>
   <Step title="Personnalisez les messages (facultatif)">
     Trois messages se personnalisent : **commande acceptée**, **en livraison**, **livrée**. Vous pouvez y glisser `{customer_name}` (le nom du client) et `{order_number}` (le numéro de commande). Laissés vides, les messages par défaut s'appliquent.
 
@@ -63,7 +66,7 @@ Un client rassuré rappelle moins et refuse moins à la livraison. Woura peut lu
   </Step>
 </Steps>
 
-Votre client est prévenu quand sa commande est acceptée, part en livraison, est livrée, et aussi si elle est annulée ou programmée. Le suivi marche pour toutes vos commandes : boutique Woura, Shopify, WooCommerce, YouCan ou WhatsApp.
+Votre client est prévenu aux étapes cochées. **En livraison** ne part qu'une fois par commande, même si elle repart en livraison après un client injoignable ou un report. Le suivi marche pour toutes vos commandes : boutique Woura, Shopify, WooCommerce, YouCan ou WhatsApp.
 
 ### Par où part le message
 
@@ -71,7 +74,7 @@ Votre client est prévenu quand sa commande est acceptée, part en livraison, es
 2. Sinon, **par WhatsApp depuis le numéro de Woura**, à votre nom.
 3. Si WhatsApp n'est pas possible, **par e-mail**, si le client a laissé son adresse. L'e-mail est gratuit.
 
-Chaque message WhatsApp de suivi coûte 1 crédit.
+Un message WhatsApp de suivi coûte des crédits ; son prix s'affiche dans la carte **Prévenir vos clients**. Il peut être plus élevé quand le client ne vous a pas écrit dans les dernières 24 heures, ce qui est le cas le plus courant. Voir [La fenêtre de 24 heures](/connecter/fenetre-24-heures).
 
 ## La confirmation de commande de votre boutique en ligne
 
@@ -89,11 +92,11 @@ Au même endroit, **Alerte WhatsApp marchand** est le même réglage que l'alert
     Vérifiez dans l'ordre :
     1. le **Numéro WhatsApp** saisi, avec l'indicatif du pays ;
     2. **Activer les notifications WhatsApp** est bien allumé, et l'alerte voulue est cochée ;
-    3. la fenêtre de 24 heures est ouverte : répondez au message que Woura vous envoie chaque matin, ou écrivez au numéro de Woura ;
+    3. la fenêtre de 24 heures est ouverte : écrivez au numéro de Woura, ou répondez au message qu'il vous envoie quand des alertes vous attendent ;
     4. il vous reste des crédits.
   </Accordion>
   <Accordion title="Mes clients ne reçoivent pas les messages de suivi.">
-    Vérifiez que **Suivi de commande** est activé et enregistré, et que le client a donné un numéro WhatsApp valide à la commande. Il vous faut aussi des crédits. Sans WhatsApp, le message part par e-mail seulement si le client a laissé son adresse.
+    Vérifiez que **Suivi de commande** est activé et enregistré, que l'étape voulue est cochée, et que le client a donné un numéro WhatsApp valide à la commande. Il vous faut aussi des crédits. Sans WhatsApp, le message part par e-mail seulement si le client a laissé son adresse.
   </Accordion>
 </AccordionGroup>
 
