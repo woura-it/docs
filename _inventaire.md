@@ -10,7 +10,7 @@
 |---|---|---|---|
 | `/` | « Vends. Encaisse. Livre. Et sache enfin ce que tu gagnes. », « Commencer gratuitement », « Voir les tarifs », « Essai Gratuit » | Les deux CTA mènent à la connexion, pas à l'inscription. | oui (bref, dans Bienvenue) |
 | `/pricing` | « Un abonnement clair. Des crédits pour le reste. » | Seule source publiable des prix. | oui (renvoi, prix vérifiés à l'écran) |
-| `/auth/register` | « Créez votre compte » ; « Continuer avec Google » (Facebook masqué depuis le 30/10/2026, en attente de l'App Review de Meta) ; Prénom, Nom, Email, Téléphone, Mot de passe, Confirmer ; « Créer mon compte » | Mot de passe : 8 caractères, majuscule, minuscule, chiffre, caractère spécial. | oui |
+| `/auth/register` | « Créez votre compte » ; « Continuer avec Google » (Facebook masqué depuis le 30/10/2026, en attente de l'App Review de Meta) ; Prénom, Nom, Email, Téléphone, Mot de passe (œil pour relire, plus de confirmation) ; « Créer mon compte » | Mot de passe : 8 caractères, majuscule, minuscule, chiffre, caractère spécial. | oui |
 | `/auth/verify` | « Vérification du compte » — « Saisissez le code à 4 chiffres envoyé par email » ; « Vérifier », « Renvoyer le code » | Code à 4 chiffres par e-mail. | oui |
 | `/auth/login` | « Bienvenue ! » ; « Se souvenir de moi », « Mot de passe oublié ? », « Se connecter » | — | oui |
 | `/auth/forgot-password` | « Mot de passe oublié ? » ; « Envoyer le code de réinitialisation » | Le code arrive par e-mail, puis « Nouveau mot de passe ». | oui |
