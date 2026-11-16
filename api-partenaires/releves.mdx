@@ -67,7 +67,7 @@ confirme ou le conteste, et chacun garde la même trace.
 | `merchant` | La boutique, détaillée comme dans une livraison (selon le partenariat) |
 | `currency` | **Un relevé par devise** : celle des commandes qu'il reprend |
 | `period_start`, `period_end` | Les jours de livraison couverts, **bornes comprises, dans le fuseau du marchand** |
-| `cod_total` | Ce que vous avez encaissé à la porte (la somme des `cod_collected`) |
+| `cod_total` | Ce que vous avez encaissé à la porte (la somme des `cod_collected`). Pour chaque livraison : le `collected_amount` que vous avez déclaré avec `delivered`, sinon le montant qui était dû |
 | `delivery_fee_total` | Vos frais de livraison, que vous gardez |
 | `closing_fee_total` | Les frais de confirmation que vous gardez quand vous avez confirmé la commande au téléphone pour le marchand ; `0` sur une commande confirmée par un call center |
 | `net_amount` | Ce que vous devez au marchand : `cod_total − delivery_fee_total − closing_fee_total`. **Négatif** : c'est le marchand qui vous doit vos frais (commandes payées en ligne, par exemple) |

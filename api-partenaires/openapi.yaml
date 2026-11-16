@@ -5991,6 +5991,21 @@ components:
           example: XOF
         payment:
           $ref: "#/components/schemas/ShipmentPayment"
+        payment_details:
+          type: [object, "null"]
+          description: |
+            Pour répondre au client qui dit avoir déjà payé : le total de la
+            commande, ce qui est déjà payé au marchand, et ce qu'il reste à
+            payer (hors frais de livraison à la charge du client). `null` sur
+            une livraison close. Ces montants ne déclenchent pas
+            `shipment.updated` : `payment` et `cod_amount` le font.
+          properties:
+            total_amount:
+              $ref: "#/components/schemas/Amount"
+            paid_amount:
+              $ref: "#/components/schemas/Amount"
+            balance_due:
+              $ref: "#/components/schemas/Amount"
         note:
           type: string
           description: Note de la commande.
@@ -7334,6 +7349,15 @@ components:
           minimum: 0
           maximum: 10000000
           description: Vos frais réels, avec `delivered` seulement ; ils remplacent les frais de la commande.
+        collected_amount:
+          type: [number, "null"]
+          minimum: 0
+          description: |
+            Avec `delivered` seulement, facultatif : ce que votre livreur a
+            réellement encaissé auprès du client, frais de livraison à sa
+            charge compris (la même base que `cod_amount`), s'il diffère de ce
+            qui était dû. Sans lui, le montant dû est tenu pour encaissé. `0` :
+            rien n'a été encaissé ; votre relevé ne vous réclame pas cet argent.
         rescheduled_for:
           type: [string, "null"]
           format: date-time
