@@ -1,0 +1,145 @@
+---
+title: "Paiements d'une commande"
+description: "Acompte, paiement en plusieurs fois, paiement avant ou à la livraison, remboursement : suivez ce que chaque client a payé et ce qu'il reste à encaisser."
+icon: "wallet"
+---
+
+Tous vos clients ne paient pas de la même façon. Certains paient tout à la livraison, d'autres versent un acompte, d'autres paient en plusieurs fois ou règlent tout avant d'être livrés. Woura garde la trace de chaque paiement, et vous dit pour chaque commande **ce qui est payé et ce qu'il reste à encaisser**.
+
+<Info>
+  Rien à activer. Si vous ne vendez qu'en paiement à la livraison, rien ne change pour vous : à la livraison, Woura considère que le livreur a encaissé le montant dû, comme avant.
+</Info>
+
+## Lire le récapitulatif d'une commande
+
+Ouvrez **Commandes**, puis une commande. Le bloc **Récapitulatif financier** est toujours affiché.
+
+| Ligne | Ce qu'elle dit |
+|---|---|
+| **Total** | Le prix de la commande. |
+| **Déjà payé** | Ce que vous avez réellement reçu, vérifié. |
+| **En attente de vérification** | Un paiement annoncé par le client, ou une capture que vous n'avez pas encore validée. Il ne compte pas tant que vous ne l'avez pas confirmé. |
+| **Reste à payer** | Ce que le client doit encore. Avant la livraison, une ligne précise ce que le livreur réclamera. |
+| **Trop-perçu** / **À rembourser** | Ce que vous devez rendre au client. |
+
+Une pastille résume l'état du paiement : **Non payée**, **Paiement à vérifier**, **Partiellement payée**, **Payée**, **Trop-perçu**, **Partiellement remboursée** ou **Remboursée**.
+
+<Note>
+  L'état du paiement est séparé du statut de la commande. Une commande peut être **Payée** avant d'être livrée, ou **Livrée** avec un reste à payer.
+</Note>
+
+Dans la liste des commandes, une marque rappelle l'essentiel : **Payée**, **Acompte reçu**, **Reste** suivi du montant, ou **Trop-perçu**.
+
+{/* capture à refaire : images/application/paiements-des-commandes/01-recapitulatif.png */}
+
+## Enregistrer un paiement
+
+Un client vous a payé en espèces, par Mobile Money ou par virement : notez-le pour que le reste à payer soit juste.
+
+<Steps>
+  <Step title="Ouvrez la commande">
+    Dans **Récapitulatif financier**, cliquez sur **Enregistrer un paiement**.
+  </Step>
+  <Step title="Saisissez le paiement">
+    Indiquez le montant (il est prérempli avec le reste à payer), le moyen, et si vous l'avez la référence de la transaction. Une même référence ne peut servir qu'une fois dans votre boutique : cela évite de compter deux fois le même paiement.
+  </Step>
+  <Step title="Dites si vous avez vu l'argent">
+    Choisissez **J'ai vu l'argent arriver** : le paiement compte tout de suite. Ou **Le client dit avoir payé** : il reste en attente jusqu'à ce que vous confirmiez par **L'argent est arrivé** ou **Rien reçu**.
+  </Step>
+</Steps>
+
+Vous pouvez enregistrer plusieurs paiements pour une même commande. Ils s'additionnent, avant comme après la livraison.
+
+<Warning>
+  Si le montant dépasse le reste à payer, Woura vous demande de confirmer. L'excédent devient un trop-perçu, à rendre au client.
+</Warning>
+
+Vous créez la commande vous-même et le client a déjà payé ? Dans la fenêtre de création, remplissez **Le client a déjà payé**. Ne le faites que si vous avez vu l'argent arriver.
+
+## Acompte : ce que le livreur réclame
+
+Dès qu'un acompte est enregistré, le livreur ne réclame que le reste. Sur l'application **Woura Agent**, il voit **Total**, **Déjà payé** et **À encaisser**.
+
+Le client peut aussi payer le reste avant la livraison : enregistrez ce paiement, et le livreur n'aura plus rien à encaisser.
+
+## À la livraison
+
+Quand une commande passe à **Livrée**, Woura considère que le livreur a encaissé le montant dû. Vous n'avez rien à saisir.
+
+Le client a remis un autre montant ? Deux façons de le dire :
+
+- le livreur le corrige lui-même sur Woura Agent, dans le champ **Montant reçu**, au moment de livrer ;
+- vous le corrigez depuis la commande, avec **Corriger le montant encaissé à la livraison**. Saisissez tout ce que le client a remis, frais de livraison à sa charge compris. Saisissez `0` si rien n'a été encaissé : le reste demeure à payer.
+
+La commande reste **Livrée**, avec un **Reste à payer**. Vous pourrez enregistrer le paiement quand vous le recevrez.
+
+## Corriger une erreur
+
+Un paiement noté par erreur ne s'efface pas : il s'annule, et reste visible.
+
+<Steps>
+  <Step title="Trouvez la ligne">
+    Dans **Historique des paiements**, cliquez sur **Annuler ce paiement** sur la ligne concernée.
+  </Step>
+  <Step title="Dites pourquoi">
+    Le motif est obligatoire. La ligne reste affichée, barrée, et ne compte plus dans les totaux.
+  </Step>
+</Steps>
+
+Un paiement en ligne ne s'annule pas : l'argent est bien arrivé. S'il faut le rendre, notez un remboursement.
+
+## Rembourser un client
+
+Woura ne déplace aucun argent : vous rendez l'argent vous-même (Mobile Money, espèces…), puis vous le notez.
+
+- Cliquez sur **Noter un remboursement**, saisissez le **Montant rendu** et le moyen.
+- Sur une commande annulée ou retournée déjà payée, la mention **À rembourser** apparaît d'elle-même, avec le montant. Le bouton **Remboursé** note que vous avez tout rendu.
+
+Vous ne pouvez pas noter un remboursement supérieur à ce que le client a payé.
+
+## Vos chiffres
+
+Sur **Accueil** et **Chiffres**, le bloc **Commandes et encaissements** distingue trois montants :
+
+| Montant | Ce qu'il compte |
+|---|---|
+| **Commandé** | Le total des commandes passées sur la période, sans les annulées ni les retournées. |
+| **Encaissé** | L'argent que vous avez vraiment reçu, compté le jour où il arrive. |
+| **Reste à encaisser** | Ce que ces commandes vous doivent encore. |
+
+L'ancien « Encaissé » s'appelle maintenant **Ventes livrées** : c'est le total de vos commandes livrées, sur lequel votre bénéfice est calculé. Sa valeur n'a pas changé. Si vous ne vendez qu'en paiement à la livraison, **Encaissé** et **Ventes livrées** sont égaux.
+
+## Ce que voit votre client
+
+Sur sa page de confirmation et de suivi, le client lit **Total**, **Déjà payé** et **Reste à payer**. Après un acompte, si votre boutique accepte le paiement par transfert, il peut payer le reste sans attendre le livreur et joindre sa capture. Vous la retrouvez dans **Historique des paiements**, à vérifier.
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="Dois-je changer quelque chose si je ne vends qu'en paiement à la livraison ?">
+    Non. Une commande livrée est comptée comme encaissée, comme avant. Vos chiffres ne changent pas.
+  </Accordion>
+  <Accordion title="Un client dit avoir payé, mais je n'ai rien reçu. Que faire ?">
+    Notez-le avec **Le client dit avoir payé**, ou attendez. Tant que vous n'avez pas confirmé, rien n'est compté et le livreur réclame toujours le montant dû. Cliquez sur **Rien reçu** si l'argent n'arrive pas.
+  </Accordion>
+  <Accordion title="Le livreur n'a pas tout encaissé. Combien me doit-il ?">
+    Seulement ce qu'il a déclaré avoir reçu, une fois le montant corrigé. Un relevé déjà émis par une société de livraison ne change pas : il garde les montants du jour où il a été créé.
+  </Accordion>
+  <Accordion title="Mes agents peuvent-ils enregistrer un paiement ?">
+    Oui, s'ils ont le droit de vérifier les paiements. Ils peuvent noter un paiement et confirmer un paiement annoncé. Annuler un paiement et noter un remboursement restent réservés au marchand.
+  </Accordion>
+  <Accordion title="Woura rembourse-t-il mes clients ?">
+    Non. Woura note ce que vous avez rendu, il ne rend pas l'argent à votre place.
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Commandes" icon="clipboard-list" href="/application/commandes">
+    Suivre et traiter vos commandes.
+  </Card>
+  <Card title="Livreurs et agents" icon="bike" href="/application/livreurs-et-agents">
+    Ce que vos livreurs encaissent et vous reversent.
+  </Card>
+</CardGroup>
