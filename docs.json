@@ -178,7 +178,8 @@
               {
                 "group": "Vendre en live",
                 "pages": [
-                  "application/vente-en-live"
+                  "application/vente-en-live",
+                  "application/lien-de-reservation"
                 ]
               },
               {
