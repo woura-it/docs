@@ -5827,7 +5827,7 @@ components:
               $ref: "#/components/schemas/Partnership"
     Partnership:
       type: object
-      required: [id, status, stock_mode, auto_accept, auto_assign, message, response_message, requested_at, responded_at, updated_at, order_confirmation]
+      required: [id, status, stock_mode, auto_accept, auto_assign, scope, message, response_message, requested_at, responded_at, updated_at, order_confirmation]
       properties:
         id:
           type: string
@@ -5847,6 +5847,15 @@ components:
             call center ou le client sur WhatsApp), sans livreur, dont la ville
             est dans vos zones vous est confiée sans clic, au tarif de la zone
             — sauf course déjà annoncée au client (frais non inclus).
+        scope:
+          type: string
+          enum: [delivery, closing, both]
+          description: |
+            Ce que le marchand vous confie (choisi à la demande de partenariat,
+            modifiable par lui) : `delivery`, la livraison seule ; `closing`,
+            seulement la confirmation des commandes par téléphone — une commande
+            que vous confirmez lui revient, sans livraison, et il ne peut pas
+            vous confier de livraison ; `both`, vous confirmez puis livrez.
         message:
           type: string
           description: Message de la demande ; chaîne vide pour un partenariat refusé ou résilié.
@@ -6890,8 +6899,15 @@ components:
         commande telle qu'elle est. Close : ce que vous en saviez à la
         clôture, client vidé (le client d'une commande confirmée est dans la
         livraison, `shipment_id`).
-      required: [id, object, status, order_id, order_number, merchant, customer, items, cod_amount, delivery_fee, delivery_fee_included, currency, payment, note, created_at, callback_at, reason, withdrawn_reason, shipment_id, calls, requested_at, handled_at, updated_at, closed_at]
+      required: [id, object, status, order_id, order_number, merchant, customer, items, cod_amount, delivery_fee, delivery_fee_included, currency, payment, note, created_at, callback_at, reason, withdrawn_reason, shipment_id, calls, requested_at, handled_at, updated_at, closed_at, scope]
       properties:
+        scope:
+          type: string
+          enum: [closing, both]
+          description: |
+            `closing` : le marchand ne vous confie que le closing ; confirmée,
+            la commande lui revient sans livraison (`shipment_id` reste `null`).
+            `both` : confirmée, elle vous est confiée pour la livraison.
         id:
           type: string
           pattern: "^[0-9]+$"

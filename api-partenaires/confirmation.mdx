@@ -6,11 +6,16 @@ Beaucoup d'e-commerçants font confirmer chaque commande par téléphone avant
 de l'expédier. Si vous le faites pour eux, Woura vous envoie leurs commandes
 **avant toute confirmation** : vous appelez le client, puis vous répondez par
 l'API. Une commande confirmée vous est aussitôt confiée, comme une
-assignation normale ([livraisons](/api-partenaires/livraisons), `shipment.assigned`).
+assignation normale ([livraisons](/api-partenaires/livraisons), `shipment.assigned`)
+— sauf si le marchand ne vous confie **que le closing** (`scope: "closing"`
+du partenariat et de chaque commande à confirmer) : elle lui revient alors
+confirmée, sans livraison.
 
 ## L'option, marchand par marchand
 
-- **Éteinte par défaut.** Le marchand l'allume pour vous dans son app : vous
+- **Éteinte par défaut.** Le marchand la choisit en cochant le closing à sa
+  demande de partenariat : en acceptant le partenariat, vous l'acceptez aussi.
+  Il peut aussi l'allumer plus tard dans son app : vous
   recevez `order_confirmation.requested`. Elle ne vaut qu'une fois que vous
   l'avez **acceptée** : `POST /merchants/{id}/order-confirmation/accept`, ou
   `/refuse` (`{"reason": "…"}` facultatif).
@@ -173,6 +178,9 @@ appels `calls` : elle ne remplace pas la note du client) et `duration_seconds`.
   rendue dans la réponse (`shipment`). Elle suit ensuite le cycle d'une [livraison](/api-partenaires/livraisons).
 - En mode **dépôt**, vous devez détenir le stock (`409 insufficient_stock`) ;
   en ramassage, rien n'est contrôlé.
+- **Closing seul** (`scope: "closing"`) : la commande passe **confirmée**, sans
+  livreur, et revient au marchand. Pas de livraison ni de `shipment.assigned`
+  (`shipment_id` reste `null`) ; ni le stock ni `delivery_fee` n'entrent en jeu.
 
 Après `callback` ou `unreachable`, la commande reste chez vous : rappelez, puis
 répondez de nouveau (`confirm`, `cancel`…). Une commande confirmée ou annulée
