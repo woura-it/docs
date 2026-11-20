@@ -193,7 +193,8 @@
                 "pages": [
                   "application/chiffres",
                   "application/depenses",
-                  "application/audience"
+                  "application/audience",
+                  "application/paiements-en-ligne"
                 ]
               },
               {
