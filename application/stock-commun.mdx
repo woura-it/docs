@@ -1,0 +1,112 @@
+---
+title: "Le stock commun"
+description: "Donnez un seul stock à un article vendu dans plusieurs boutiques : une vente dans l'une fait baisser le chiffre des autres."
+icon: "boxes"
+---
+
+Quand le même article se vend dans plusieurs boutiques, chacune a son propre chiffre de stock, et aucun n'est juste. Mettez le stock **en commun** : vos boutiques suivent alors un seul chiffre pour cet article. Une vente dans l'une fait baisser le stock des autres, et vous ne vendez plus ce que vous n'avez pas.
+
+<Note>
+  Cette fonction est disponible progressivement : elle s'ouvre compte par compte. Si vous ne la voyez pas encore, elle n'est pas encore ouverte pour votre compte.
+</Note>
+
+<Info>
+  L'article doit d'abord être relié dans au moins deux boutiques. Voir [Rapprocher vos articles](/application/articles-communs).
+</Info>
+
+## Avant de commencer
+
+- **Comptez vos pièces.** Woura n'additionne pas les anciens stocks de vos boutiques, souvent faux : c'est vous qui donnez le chiffre de départ.
+- **Woura ne modifie pas le stock affiché sur Shopify, WooCommerce ou YouCan.** Le chiffre de Woura sera juste, mais celui de votre site ne bouge que si vous le changez vous-même, là-bas. Pensez à le mettre à jour.
+- **Un article suivi par taille ou par couleur** ne peut pas encore être mis en commun. Woura le refuse : « La mise en commun du stock par taille n'est pas encore disponible. »
+
+## Mettre le stock en commun
+
+<Steps>
+  <Step title="Ouvrez l'article relié">
+    Dans **Produits**, cliquez sur **Rapprocher mes articles**, puis ouvrez l'onglet **Reliés**.
+  </Step>
+  <Step title="Cliquez sur Mettre le stock en commun">
+    La fenêtre rappelle le stock de chaque boutique aujourd'hui, par exemple « Aujourd'hui : Boutique Awa 12 · Awa Shopify 8 ».
+  </Step>
+  <Step title="Saisissez votre stock réel">
+    Dans **Combien en avez-vous en tout ?**, indiquez les pièces que vous avez vraiment. Ce chiffre **remplace** le stock de chaque boutique.
+
+    Si l'article se vend aussi sur un site Shopify, WooCommerce ou YouCan, la fenêtre vous rappelle que Woura n'y change rien.
+  </Step>
+  <Step title="Validez">
+    Cliquez sur **Mettre en commun**. Le message **Stock mis en commun** confirme.
+  </Step>
+</Steps>
+
+<Warning>
+  Le chiffre saisi remplace le stock de chaque boutique pour cet article. Il n'y a pas de retour arrière automatique : l'historique des mouvements de stock de chaque produit garde une ligne « Mise en commun du stock ».
+</Warning>
+
+## Lire le stock commun
+
+Dans l'onglet **Reliés**, l'article porte la pastille **Stock commun** et un seul chiffre pour toutes les boutiques, par exemple « 20 en stock · 3 promis à des clients · 17 à vendre » :
+
+- **en stock** : les pièces que vous possédez ;
+- **promis à des clients** : les pièces des commandes acceptées ou en livraison, pas encore sorties du stock ;
+- **à vendre** : ce qui reste quand on retire ce qui est promis.
+
+Sur la fiche du produit, dans chaque boutique, la ligne **Article commun** dit par exemple **Stock commun avec 2 autres boutiques**. Le stock affiché est le même dans toutes ces boutiques.
+
+## Ce qui change
+
+- **Une vente dans une boutique fait baisser le stock des autres.** Une commande acceptée dans votre boutique Woura réduit aussi ce qui reste à vendre sur votre boutique Shopify dans Woura.
+- **Les ventes faites sur vos sites comptent.** Une commande Shopify, WooCommerce ou YouCan arrive dans Woura comme d'habitude, et fait baisser le stock commun.
+- **Ajouter ou retirer du stock**, depuis la fiche du produit dans n'importe laquelle de ces boutiques, change le stock commun.
+- **Le stock sort toujours selon la même règle** : au paiement vérifié, ou à la livraison. Voir [Produits et stock](/application/produits).
+
+## Sortir un produit du stock commun
+
+Il n'y a pas de bouton pour « séparer » le stock seul. Vous quittez le stock commun en détachant un produit, ou en séparant l'article. Dans les deux cas, Woura vous demande où vont les pièces.
+
+<Tabs>
+  <Tab title="Détacher un produit">
+    Dans l'onglet **Reliés**, cliquez sur **Détacher** sur le produit. Répondez à **Combien de pièces restent dans cette boutique ?** : ce nombre part avec le produit, et le stock commun baisse d'autant. La fenêtre le calcule pour vous : « Le stock commun passera de 20 à 15 ».
+
+    S'il ne restait que deux produits, le lien est supprimé : l'autre boutique garde le reste.
+  </Tab>
+  <Tab title="Séparer l'article">
+    Cliquez sur **Séparer ces articles**, puis répondez à **Quelle boutique garde le stock ?**. La boutique choisie garde tout le stock commun. Les autres boutiques **repartent à zéro** pour cet article.
+  </Tab>
+</Tabs>
+
+<Warning>
+  Séparer un article remet à zéro le stock de toutes ses boutiques, sauf celle que vous choisissez. Vérifiez la boutique cochée avant de valider.
+</Warning>
+
+## Ajouter un produit à un article en stock commun
+
+Depuis la fiche du produit, **Relier à un article d'une autre boutique** fonctionne comme d'habitude. Si l'article choisi est en stock commun, la fenêtre prévient : le stock du produit dans sa boutique sera **remplacé** par le stock commun. Voir [Rapprocher vos articles](/application/articles-communs).
+
+## Questions fréquentes
+
+<AccordionGroup>
+  <Accordion title="Woura met-il à jour le stock de mon site Shopify, WooCommerce ou YouCan ?">
+    Non. Woura suit votre stock, mais n'écrit rien sur vos sites. Changez le stock là-bas vous-même. Entre deux mises à jour, votre site peut encore vendre une pièce que vous n'avez plus.
+  </Accordion>
+  <Accordion title="Une commande passée sur Shopify fait-elle baisser le stock commun ?">
+    Oui, comme toute commande de vos boutiques dans Woura. Si une commande n'arrive pas dans Woura, le stock commun ne la compte pas : lancez une [synchronisation](/connecter/synchronisation) en cas de doute.
+  </Accordion>
+  <Accordion title="Mon article a des tailles. Puis-je mettre son stock en commun ?">
+    Pas encore, si son stock est suivi par taille ou par couleur dans une de vos boutiques.
+  </Accordion>
+  <Accordion title="J'ai saisi un mauvais chiffre de départ.">
+    Corrigez-le avec **Ajouter du stock** ou **Retirer du stock**, sur la fiche du produit dans l'une des boutiques : le stock commun suit. Voir [Produits et stock](/application/produits).
+  </Accordion>
+</AccordionGroup>
+
+## Et ensuite ?
+
+<CardGroup cols={2}>
+  <Card title="Produits et stock" icon="package" href="/application/produits">
+    Quand le stock sort, et comment l'ajuster.
+  </Card>
+  <Card title="Toutes vos boutiques au même endroit" icon="layout-list" href="/application/toutes-mes-boutiques">
+    Les commandes de toutes vos boutiques ensemble.
+  </Card>
+</CardGroup>

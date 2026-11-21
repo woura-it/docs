@@ -73,6 +73,15 @@ Le client a remis un autre montant ? Deux façons de le dire :
 
 La commande reste **Livrée**, avec un **Reste à payer**. Vous pourrez enregistrer le paiement quand vous le recevrez.
 
+## Paiement et stock
+
+Dès qu'un paiement est vérifié, total ou acompte, le stock de toute la commande sort, sans attendre la livraison :
+- un paiement en ligne confirmé par WouraPay ;
+- une capture que vous validez ;
+- un paiement enregistré avec **J'ai vu l'argent arriver**, ou confirmé avec **L'argent est arrivé**.
+
+Un paiement **en attente de vérification** ne sort rien. Sans paiement vérifié, le stock sort à la livraison, comme avant. Si la commande est annulée ou retournée, le stock revient ; annuler un paiement ou noter un remboursement, non. Voir [Produits et stock](/application/produits).
+
 ## Corriger une erreur
 
 Un paiement noté par erreur ne s'efface pas : il s'annule, et reste visible.
@@ -131,6 +140,9 @@ Sur sa page de confirmation et de suivi, le client lit **Total**, **Déjà payé
   </Accordion>
   <Accordion title="Mes agents peuvent-ils enregistrer un paiement ?">
     Oui, s'ils ont le droit de vérifier les paiements. Ils peuvent noter un paiement et confirmer un paiement annoncé. Annuler un paiement et noter un remboursement restent réservés au marchand.
+  </Accordion>
+  <Accordion title="Le client a payé un acompte : pourquoi mon stock a-t-il déjà baissé ?">
+    Parce que la commande est payée, même en partie : ses pièces ne sont plus à vendre. Le stock sort au premier paiement vérifié, et ne sort pas une seconde fois à la livraison.
   </Accordion>
   <Accordion title="Woura rembourse-t-il mes clients ?">
     Non. Woura note ce que vous avez rendu, il ne rend pas l'argent à votre place.

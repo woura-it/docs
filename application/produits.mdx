@@ -55,6 +55,32 @@ Vous commandez de la marchandise à un fournisseur ? Le lien **Approvisionner ce
 
 Par défaut, **non** : un produit à 0 reste commandable, pour qu'un oubli de mise à jour ne vous fasse pas perdre de vente. Si votre stock est tenu à jour, activez **Bloquer les commandes quand le stock est à 0** dans **Paramètres** → **Produits**. C'est le même réglage que dans l'éditeur de boutique. Voir [Commande et livraison](/boutique/commande-et-livraison).
 
+### Quand le stock sort-il ?
+
+Une pièce payée n'est plus à vendre. Le stock d'une commande sort donc **dès qu'un paiement est vérifié**, sans attendre la livraison. Cette règle vaut pour toutes les boutiques, sans rien à régler.
+
+| Ce qui arrive sur la commande | Le stock sort ? |
+|---|---|
+| Un paiement en ligne confirmé par WouraPay, total ou acompte | Oui, tout de suite |
+| Une capture de paiement par transfert que vous (ou votre agent) validez, total ou acompte | Oui, tout de suite |
+| Un paiement que vous enregistrez avec **J'ai vu l'argent arriver**, ou que vous confirmez avec **L'argent est arrivé** | Oui, tout de suite |
+| Une capture **à vérifier**, ou un paiement noté avec **Le client dit avoir payé** | Non, pas encore |
+| Aucun paiement vérifié | À la livraison, comme avant |
+
+Toute la commande sort d'un coup, même après un simple acompte. Elle ne sort qu'une fois : un second paiement, puis la livraison, ne retirent rien de plus.
+
+Si la commande est **annulée**, **retournée** ou supprimée, le stock revient. En revanche, annuler un paiement ou noter un remboursement ne fait pas revenir le stock : seule la commande le fait.
+
+Dans **Historique des mouvements de stock**, une sortie au paiement se lit « Sorti au paiement de la commande » suivi de son numéro.
+
+<Note>
+  Une commande payée avant la mise en place de cette règle sort son stock à la livraison, comme prévu.
+</Note>
+
+### Un article vendu dans plusieurs boutiques
+
+Avec plusieurs boutiques, vous pouvez relier le même article d'une boutique à l'autre, puis lui donner un seul stock. La fiche du produit le dit sur la ligne **Article commun**, et la liste marque le produit **Relié**. Voir [Rapprocher vos articles](/application/articles-communs) et [Le stock commun](/application/stock-commun).
+
 ## Et ensuite ?
 
 <CardGroup cols={2}>

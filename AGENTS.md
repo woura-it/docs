@@ -65,7 +65,9 @@ Ne pas documenter :
 
 Décision du 21/10/2026 : **Approvisionnement**, **Publicités Facebook**, **Veille marché** et **Wou** sont documentés (`application/approvisionnement`, `application/publicites-facebook`, `application/veille-marche`, `connecter/wou`). Ce qui dépend d'un drapeau s'écrit « si la fonction est ouverte pour votre compte », sans nommer le drapeau ; pour Publicités Facebook, la connexion dépend d'une validation de Meta : le dire sobrement.
 
-Ce que l'interface n'offre pas (déconnecter une boutique ou un numéro WhatsApp, zones de livraison WhatsApp) : écrire « contactez le support ».
+Ce que l'interface n'offre pas (déconnecter une boutique, zones de livraison WhatsApp) : écrire « contactez le support ». Un numéro WhatsApp, lui, se délie depuis l'assistant (onglet **Réglages**, **Délier**).
+
+Refonte « entreprise » (vue réunie des commandes et page **Canaux et intégrations**, plusieurs numéros WhatsApp, articles et stock communs) : ouverte compte par compte ; chaque page concernée commence par une note « disponible progressivement ». La règle de sortie du stock au paiement vérifié vaut, elle, pour tous.
 
 ## Onglet « API partenaires »
 

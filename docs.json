@@ -92,6 +92,7 @@
                   "connecter/youcan",
                   "connecter/boutique-woura",
                   "connecter/plusieurs-boutiques",
+                  "application/toutes-mes-boutiques",
                   "connecter/synchronisation"
                 ]
               },
@@ -99,6 +100,7 @@
                 "group": "WhatsApp",
                 "pages": [
                   "connecter/whatsapp-relier",
+                  "connecter/plusieurs-numeros-whatsapp",
                   "connecter/assistant-whatsapp",
                   "connecter/catalogue-whatsapp",
                   "connecter/campagnes-whatsapp",
@@ -170,6 +172,8 @@
                   "application/commandes",
                   "application/paiements-des-commandes",
                   "application/produits",
+                  "application/articles-communs",
+                  "application/stock-commun",
                   "application/approvisionnement",
                   "application/clients",
                   "application/sav"
