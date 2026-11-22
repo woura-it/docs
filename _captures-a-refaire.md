@@ -115,3 +115,16 @@ Compte de démonstration « Maison Awa », serveurs locaux, **navigation V2 acti
 - 53 emplacements de captures retirées, dont un sans objet depuis le 20/11/2026 (n° 15) : 52 à refaire (51 fichiers : `demarrer/credits-et-abonnement/02-abonnement-plein.png` sert à deux pages).
 - 23 nouvelles captures.
 - Soit 75 emplacements, 74 fichiers à produire.
+
+## Équipe du marchand (23/11/2026, branche `docs/equipe`)
+
+Pages `application/equipe` et `application/rejoindre-une-equipe` publiées **sans capture**. Les captures de recette (`WOURA/REFONTE-ENTREPRISE/recette/lot8b`, `lot8d`, `lot8e`) ne sont pas reprises : toutes montrent le badge « N » de `next dev`, certaines la bannière de cookies ou des adresses `@m8b.test`. À prendre sur le compte de démonstration « Maison Awa », interrupteur de l'équipe ouvert :
+
+- `images/application/equipe/01-liste.png` : page Équipe avec un membre actif et une invitation (375 et 1440).
+- `images/application/equipe/02-inviter.png` : fenêtre « Inviter un membre », Vendeur coché, case visible.
+- `images/application/equipe/03-fiche.png` : fiche d'un membre (rôle, Enregistrer, Retirer de l'équipe).
+- `images/application/equipe/04-gratuit.png` : « Votre plan Gratuit ne comprend pas d'équipe. ».
+- `images/application/rejoindre-une-equipe/01-rejoindre.png` : page « Rejoindre Maison Awa » (sans envoyer).
+- `images/application/rejoindre-une-equipe/02-accueil-vendeur.png` : accueil d'un vendeur (ligne « Vous gérez … », carte En direct).
+- `images/application/vente-en-live/05-equipe-membres.png` : étape « Votre équipe » avec des membres.
+- `images/application/vente-en-live/06-saisie-suivante.png` : fenêtre de saisie du live après une commande (« … Suivante : »).
