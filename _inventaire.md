@@ -262,3 +262,16 @@ Pages : `application/approvisionnement`, `application/publicites-facebook`, `app
 - **Cloche** : « Tout marquer comme lu » n'existe pas dans le menu de la cloche ; retiré de `application/notifications`.
 - **Titres alignés (branche app `feat/titres-alignes`, 829055d, non fusionnée)** : Paramètres, Livreurs et agents, Affiliation, Publicités Facebook et Veille marché ont pour titre le nom du menu ; sur Publicités Facebook sans compte relié, « Relier votre compte publicitaire Facebook » devient un sous-titre. La doc suit : titres de pages `application/parametres` (« Paramètres »), `abonnement/affiliation` (« Affiliation »), `application/livreurs-et-agents` (« Livreurs et agents ») et liens qui les citaient ; « Veille Marché » retiré. Sur `dev`, les anciens titres restent affichés jusqu'à la fusion.
 
+
+### Équipe du marchand (lots 8a-8e, doc du 23/11/2026, branche `docs/equipe`)
+
+Sources : `api-essai` `dev` (15ea53f1 : `membres/`, doc staff `equipe-du-marchand.md`, migration `subscription.0030`), `app-essai` `dev` (094afe54 : `messages/fr.json` `Equipe.*`, `Live.equipe.membres.*`, `Orders.create.live.*`, `lib/membres.ts`, `components/equipe/`). Interrupteur `EQUIPE_MARCHAND` en liste blanche : la doc dit « s'ouvre progressivement ».
+
+- Pages : `application/equipe` (propriétaire), `application/rejoindre-une-equipe` (membre : lecteur différent, page à lui transmettre). Groupe « Réglages », après « Votre compte » : la carte est dans Toutes les fonctionnalités › Compte et l'écran est réservé au propriétaire, comme le compte.
+- Mis à jour : `vente-en-live` (saisie : bouton « Enregistrer · … », fenêtre qui reste ouverte, pour tous ; « Vous faire aider pendant le live » : membres d'abord, agents ensuite), `lien-de-reservation`, `livreurs-et-agents` (différence agent / membre, ancre corrigée), `toutes-les-fonctionnalites`, `credits-et-abonnement` (ligne Membres, retour au Gratuit), `plans-et-credits`, glossaire.
+- **Membres par plan** : 0 / 3 / illimité lus dans `subscription/migrations/0030_limite_membres.py` (le 3 est posé pour tout plan qui a un nombre d'agents) et dans `Equipe.gratuit.texte`. Valeur modifiable au back-office : à relire si un plan change.
+- **Écarts relevés (non corrigés, dépôts en lecture seule)** :
+  - `lib/aide.ts` n'a pas `/equipe` → `/application/equipe` (l'aide de la page tombe sur l'accueil de la doc).
+  - Une personne retirée après avoir accepté ne peut pas être réinvitée avec la même adresse (`email_pris` : son compte de membre existe). La doc le dit en FAQ.
+  - Un agent à qui l'on donne **Créer des commandes** dans « Gérer les permissions » voit encore les lives dans Woura Agent même quand l'équipe est ouverte (`vente_live/agents.py` ne lit pas `EQUIPE_MARCHAND`). La doc ne le présente que comme le chemin « si l'équipe n'est pas encore ouverte » (retrait prévu au lot 8f).
+  - Les noms de paiement déjà affichés (« Validé par … ») peuvent nommer le propriétaire ; seuls `statut_par_membre`, `cree_par_membre`, `verifie_par_membre` sont réservés aux membres. La doc dit « rien ne change à l'écran » pour le propriétaire.

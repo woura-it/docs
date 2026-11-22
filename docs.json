@@ -214,7 +214,9 @@
                 "pages": [
                   "application/notifications",
                   "application/parametres",
-                  "application/compte"
+                  "application/compte",
+                  "application/equipe",
+                  "application/rejoindre-une-equipe"
                 ]
               }
             ]
