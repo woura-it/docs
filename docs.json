@@ -196,6 +196,7 @@
                 "group": "Argent et chiffres",
                 "pages": [
                   "application/chiffres",
+                  "application/rapport-activite",
                   "application/depenses",
                   "application/audience",
                   "application/paiements-en-ligne"
