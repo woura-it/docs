@@ -46,7 +46,7 @@
 |---|---|---|---|
 | `/whatsapp-shop` | Redirige vers l'assistant de la boutique active (création de boutique WhatsApp retirée le 03/10/2026) ; liaison : « Connecter WhatsApp Business », nom du chatbot (défaut « Sarah ») | Connexion Meta Embedded : admin du Business Manager, toutes les autorisations ; le marchand garde WhatsApp sur son téléphone. | oui |
 | Mode OTP (BSP) | « Meta BSP (OTP) » | Drapeau `WHATSAPP_BSP` (100 % en dev). | ? (Q3) |
-| `/whatsapp-shop/{id}` | « Assistant WhatsApp » (« Bêta ») ; onglets « Discussions », « Essayer », « Réglages », « Catalogue » ; « Mettre en ligne » / « Mettre hors ligne » | Menu derrière `AI_ASSISTANT` (pilote liste blanche en dev). Réponse : 2 crédits dans la fenêtre 24 h, 4 hors fenêtre. | ? (Q2) |
+| `/whatsapp-shop/{id}` | « Assistant WhatsApp » (« Bêta ») ; onglets « Discussions », « Essayer », « Réglages », « Catalogue » ; « Mettre en ligne » / « Mettre hors ligne » | Menu derrière `AI_ASSISTANT` (pilote liste blanche en dev). Réponse : 1 crédit dans la fenêtre 24 h, plus hors fenêtre (prix au catalogue). | ? (Q2) |
 | Catalogue WhatsApp | « Relier votre catalogue WhatsApp », « Envoyer N produits » | Numéros Meta seulement ; produits sans photo non envoyés. | ? (Q2) |
 | Comportements `WHATSAPP_FLOW_V2` | paiement dans la conversation, frais de livraison, mémoire client | Variable d'environnement (vraie en dev). | ? (Q2) |
 | `/whatsapp-campaigns` | « Campagnes WhatsApp » ; « Nouvelle campagne » ; « Confirmer et envoyer » ; « Aucun modèle approuvé. Contactez Woura. » | Audience : a écrit ou commandé, opt-in, pas de STOP ; coût = destinataires × prix (3 crédits marketing, 1 utilitaire) ; drapeau `WHATSAPP_CAMPAGNES` au lancement. | ? (Q3) |
